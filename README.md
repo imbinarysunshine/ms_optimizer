@@ -10,12 +10,17 @@ derived from Map.wz foothold/spawn geometry.
 
 ```
 index.html          Vite entry point
-vite.config.js       Vite + React plugin config
+vite.config.js       Vite + React plugin config (also configures vitest)
 package.json
 src/
   main.jsx           React 18 mount point
-  App.jsx            The app itself (damage formulas, session profit model,
-                      filters, map/world-map views)
+  App.jsx            The app itself (session profit model, filters,
+                      map/world-map views, map-quality helpers)
+  lib/
+    formulas.js        Pure game-math functions (damage, kill-count, Heal,
+                        MP Eater, session profit, level-up math) -- no React
+                        or browser dependencies, extracted from App.jsx
+                        specifically so they're unit-testable
   data/
     monsterDb.js       MONSTER_DB, STAT_VERIFIED_IDS, UNDEAD_IDS -- the
                         hand-compiled monster stat table (~1,140 monsters)
@@ -23,6 +28,16 @@ src/
     mobDrops.js          MOB_INCOME_PER_KILL -- real per-monster mesos/kill
                           income (mesos + sellable item/equip drop EV), keyed
                           by MONSTER_DB id
+test/
+  formulas.test.js         Unit tests for src/lib/formulas.js
+  mapHelpers.test.js        Unit tests for App.jsx's map-quality helpers
+                             (isRopeHeavyMap/isLowSpawnMap/isUnreachableMap/
+                             mobWzId/scoreColor)
+  spawnMaps.test.js          Unit tests for App.jsx's spawnMapsFor/realMapName
+  data/
+    monsterDb.test.js        MONSTER_DB/STAT_VERIFIED_IDS/UNDEAD_IDS integrity
+    expTable.test.js          EXP_TABLE integrity
+    mobDrops.test.js          MOB_INCOME_PER_KILL integrity
 public/data/
   mapScores.js        window.MAP_SCORES -- Map.wz-derived MC/Heal training
                        fit scores for 1,892 maps
@@ -84,6 +99,31 @@ npm run dev
 
 Then open the printed local URL. `npm run build` produces a static `dist/`
 you can deploy or open directly.
+
+## Testing
+
+```
+npm run test        # run once
+npm run test:watch  # watch mode
+```
+
+Unit tests cover the pure logic layer: `src/lib/formulas.js` in full (damage,
+kill-count, Heal, MP Eater, session profit, level-up math), the map-quality
+helpers and spawn-map lookup in `App.jsx` (exported specifically so they're
+importable by tests, with `MAP_SCORES`/`MAP_NAMES` stubbed via `globalThis`
+to simulate the `<script>`-tag globals they read in the browser), and data
+integrity checks for all three `src/data/*.js` modules (shape, ranges,
+cross-referential consistency with `MONSTER_DB`, and regression checks for
+the two Cosmic-dump data-correction passes done this session).
+
+**Not covered:** React component rendering (`MonsterCard`, `MapExpandModal`,
+`App` itself) -- these are UI/integration concerns, not unit-testable pure
+logic, and would need `jsdom` + React Testing Library to test meaningfully.
+Also not covered: the `public/data/*.js` files (`mapScores.js`,
+`mapMobSpawns.js`, etc.) -- these are intentionally plain `window.X = {...}`
+globals rather than ES modules (see "Why this structure" above), so they
+aren't importable by a test file; their generation is validated by their own
+`tools/extract_*.mjs` scripts' console output when regenerated.
 
 ## Why this structure
 

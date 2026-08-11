@@ -2,192 +2,14 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { MONSTER_DB, STAT_VERIFIED_IDS, UNDEAD_IDS } from "./data/monsterDb";
 import { EXP_TABLE } from "./data/expTable";
 import { MOB_INCOME_PER_KILL } from "./data/mobDrops";
-
-// -- Default character stats (overridden by UI panel) -----------------------
-const DEFAULT_CHAR = { level:20, int:87, luk:23, weaponMatk:21, mpMax:571, expPct:28 };
-// AP distribution per level: +4 INT, +1 LUK
-const INT_PER_LEVEL = 4;
-const LUK_PER_LEVEL = 1;
-
-function statsAtLevel(lvl, baseChar) {
-  const g = lvl - baseChar.level;
-  const int_ = baseChar.int + g * INT_PER_LEVEL;
-  const luk_ = baseChar.luk + g * LUK_PER_LEVEL;
-  const mpMax = baseChar.mpMax + g * (6 + Math.floor((baseChar.int + g * 2) / 10));
-  return { level:lvl, int:int_, luk:luk_, weaponMatk:baseChar.weaponMatk, mpMax };
-}
-
-const EXP_MULTI = 2;
-const SPELL_ATK = 40, MASTERY = 0.60;
-// Magic Claw fires 2 separate hits per cast, each rolled independently off this formula.
-const MC_HITS_PER_CAST = 2;
-
-function calcDmg(matk, int_) {
-  const magic = matk + int_;
-  return {
-    min: ((magic**2/1000 + magic*MASTERY*0.9)/30 + int_/200)*SPELL_ATK,
-    max: ((magic**2/1000 + magic)/30 + int_/200)*SPELL_ATK,
-  };
-}
-
-function hitsToKill(hp, mdef, dmgMin) {
-  const eh = hp + mdef;
-  if (dmgMin >= eh) return 1;
-  if (dmgMin * 2 >= eh) return 2;
-  return Math.ceil(eh / dmgMin);
-}
-
-// -- Heal skill formula (v62 pre-BB, source: Ayumilove/Southperry formula compilation) --
-// Heal Lv N: MP cost = 29 + N, Skill% = N * 15%
-// MIN = (INT*0.3 + LUK) * Magic/1000 * HEAL_TARGET_MULT * skillPct
-// MAX = (INT*1.2 + LUK) * Magic/1000 * HEAL_TARGET_MULT * skillPct
-//
-// HEAL_TARGET_MULT is STRICTLY the Heal HP-recovery formula's own multiplier --
-// it scales with the number of PARTY MEMBERS being healed, including the caster
-// ("1.5 + 5/partySize": 1=6.5, 2=4.0, 3=3.167, 4=2.75, 5=2.5, 6=2.333), and has
-// nothing to do with how many undead monsters get damaged. This app has no party
-// mechanics -- it's a solo-training calculator -- so partySize is always 1,
-// giving a fixed 6.5x. Per-target Heal damage does NOT drop as you hit more
-// undead; the "Undead Hit / Cast" slider below only affects kill throughput
-// (exp/kills per cast, MP Eater proc rolls), never this multiplier.
-const HEAL_TARGET_MULT = 1.5 + 5 / 1;
-function healDmg(healLvl, int_, luk, weaponMatk) {
-  if (healLvl === 0) return { min: 0, max: 0, mpCost: 0 };
-  const magic = int_ + weaponMatk;
-  const skillPct = (healLvl * 15) / 100;
-  const mpCost = 29 + healLvl;
-  const min = (int_ * 0.3 + luk) * magic / 1000 * HEAL_TARGET_MULT * skillPct;
-  const max = (int_ * 1.2 + luk) * magic / 1000 * HEAL_TARGET_MULT * skillPct;
-  return { min, max, mpCost };
-}
-
-function healCastsToKill(hp, mdef, healLvl, int_, luk, weaponMatk) {
-  if (healLvl === 0) return null;
-  const eh = hp + mdef;
-  const { min } = healDmg(healLvl, int_, luk, weaponMatk);
-  if (min <= 0) return null;
-  return Math.ceil(eh / min);
-}
-
-function oneshotLevel(hp, mdef, baseChar) {
-  const eh = hp + mdef;
-  for (let lvl = baseChar.level; lvl <= 80; lvl++) {
-    const s = statsAtLevel(lvl, baseChar);
-    const d = calcDmg(s.weaponMatk, s.int);
-    if (d.min * MC_HITS_PER_CAST >= eh) return lvl;
-  }
-  return null;
-}
-
-// MP Eater (passive, 2nd job): chance to absorb % of mob's max MP per hit
-// Lv N: N% chance, absorb N/2% of mob's max MP (Lv1=1%/1%, Lv20=20%/10%)
-// Fires independently per hit: Magic Claw = 2 rolls, Heal vs N targets = N rolls
-function mpEaterAbsorbPerProc(mpEaterLvl, mobMp) {
-  return mobMp * (mpEaterLvl / 200); // absorb N/2 % of mob MP
-}
-function mpEaterProcChance(mpEaterLvl) {
-  return mpEaterLvl / 100; // N% chance per hit
-}
-// Expected MP recovered per cast (accounting for multiple hits/targets)
-function mpEaterExpectedReturn(mpEaterLvl, mobMp, numHits) {
-  if (mpEaterLvl === 0 || mobMp === 0) return 0;
-  const procChance = mpEaterProcChance(mpEaterLvl);
-  const absorbPerProc = mpEaterAbsorbPerProc(mpEaterLvl, mobMp);
-  return procChance * absorbPerProc * numHits;
-}
-// Probability of at least one MP Eater proc across N hits
-function mpEaterAnyProcChance(mpEaterLvl, numHits) {
-  if (mpEaterLvl === 0) return 0;
-  return 1 - Math.pow(1 - mpEaterProcChance(mpEaterLvl), numHits);
-}
-// Net expected MP cost after MP Eater return
-function netMpCost(baseMpCost, mpEaterReturn) {
-  return Math.max(0, baseMpCost - mpEaterReturn);
-}
-
-// Given total EXP gained in a session, starting from CHAR.level with 0% progress,
-// calculate levels gained and leftover % into next level
-function calcLevelsGained(totalExpGained, startLevel, startExpPct) {
-  // Convert starting exp% into actual exp already earned this level
-  const startLvlExp = EXP_TABLE[startLevel] || 0;
-  const startExpEarned = Math.floor(startLvlExp * startExpPct / 100);
-  let remaining = totalExpGained;
-  let lvl = startLevel;
-  // First level: offset by already-earned exp
-  const firstLvlRemaining = startLvlExp - startExpEarned;
-  if (remaining >= firstLvlRemaining) {
-    remaining -= firstLvlRemaining;
-    lvl++;
-  } else {
-    // Didn't even finish current level
-    const leftoverPct = ((startExpEarned + remaining) / startLvlExp) * 100;
-    return { levelsGained: 0, leftoverPct, finalLevel: lvl };
-  }
-  let levelsGained = 1;
-  while (remaining > 0 && lvl < EXP_TABLE.length) {
-    const needed = EXP_TABLE[lvl];
-    if (!needed) break;
-    if (remaining >= needed) {
-      remaining -= needed;
-      lvl++;
-      levelsGained++;
-    } else {
-      break;
-    }
-  }
-  const currentLvlNeeded = EXP_TABLE[lvl] || EXP_TABLE[EXP_TABLE.length - 1];
-  const leftoverPct = currentLvlNeeded > 0 ? (remaining / currentLvlNeeded) * 100 : 0;
-  return { levelsGained, leftoverPct, finalLevel: lvl };
-}
-// Income per kill: real per-monster mesos drop EV + sellable item/equip drop EV,
-// computed from Cosmic's actual drop tables + Item.wz/Character.wz NPC sell prices
-// (see tools/extract_mob_drops.mjs -- MOB_INCOME_PER_KILL is keyed by MONSTER_DB id).
-// A handful of monsters have no matching drop_data rows in the source dump; those
-// fall back to the dataset-wide average rather than a single universal constant.
-const MOB_INCOME_VALUES = Object.values(MOB_INCOME_PER_KILL);
-const FALLBACK_INCOME_PER_KILL = MOB_INCOME_VALUES.reduce((a, b) => a + b, 0) / MOB_INCOME_VALUES.length;
-function incomePerKillFor(mobId) {
-  const v = MOB_INCOME_PER_KILL[mobId];
-  return v !== undefined ? v : FALLBACK_INCOME_PER_KILL;
-}
-const MC_MP_COST_CONST = 20;
-const MC_CAST_TIME_SEC = 2.0;   // seconds per Magic Claw kill (cast + reposition)
-const HEAL_CAST_TIME_SEC = 3.0; // seconds per Heal cycle (cast + move to next group)
-
-// MP-restore items available for session profit calc, verified against v62 Item.wz Consume data
-// (private-server prices: some drop-only items are NPC-purchasable for convenience here)
-const POTIONS = {
-  bluePotion: { label: "Blue Potion (100m / 100MP)", cost: 100, mpFlat: 100, mpPct: null },
-  manaElixir: { label: "Mana Elixir (310m / 300MP)", cost: 310, mpFlat: 300, mpPct: null },
-  elixir: { label: "Elixir (1000m / 50% MP)", cost: 1000, mpFlat: null, mpPct: 0.5 },
-  powerElixir: { label: "Power Elixir (2500m / 100% MP)", cost: 2500, mpFlat: null, mpPct: 1.0 },
-};
-
-function sessionProfit(minutes, skill, killsPerCast, netMpCostPerCast, expPerKill, charLevel, charExpPct, potionKey, charMpMax, incomePerKill) {
-  const potion = POTIONS[potionKey] || POTIONS.bluePotion;
-  const mpPerPotion = potion.mpFlat != null ? potion.mpFlat : potion.mpPct * (charMpMax || 1);
-  const secs = minutes * 60;
-  const castTime = skill === "heal" ? HEAL_CAST_TIME_SEC : MC_CAST_TIME_SEC;
-  const casts = secs / castTime;
-  const kills = casts * killsPerCast;
-  const potsNeeded = (casts * netMpCostPerCast) / mpPerPotion;
-  const potCost = potsNeeded * potion.cost;
-  const income = kills * incomePerKill;
-  const profit = income - potCost;
-  const totalExp = kills * expPerKill * EXP_MULTI;
-  const { levelsGained, leftoverPct, finalLevel } = calcLevelsGained(totalExp, charLevel, charExpPct);
-  return {
-    casts: Math.round(casts),
-    kills: Math.round(kills),
-    potCost: Math.round(potCost),
-    income: Math.round(income),
-    profit: Math.round(profit),
-    totalExp: Math.round(totalExp),
-    levelsGained,
-    leftoverPct,
-    finalLevel,
-  };
-}
+import {
+  DEFAULT_CHAR, INT_PER_LEVEL, LUK_PER_LEVEL, statsAtLevel,
+  EXP_MULTI, SPELL_ATK, MASTERY, MC_HITS_PER_CAST, calcDmg, hitsToKill,
+  HEAL_TARGET_MULT, healDmg, healCastsToKill, oneshotLevel,
+  mpEaterAbsorbPerProc, mpEaterProcChance, mpEaterExpectedReturn, mpEaterAnyProcChance, netMpCost,
+  calcLevelsGained, FALLBACK_INCOME_PER_KILL, incomePerKillFor,
+  MC_CAST_TIME_SEC, HEAL_CAST_TIME_SEC, POTIONS, sessionProfit,
+} from "./lib/formulas";
 
 // Source: community knowledge of v62 map layouts (ESTIMATED - to be replaced with Map.wz foothold data)
 // healCoverage: estimated monsters hittable per Heal cast standing still at optimal position (1-6)
@@ -243,7 +65,7 @@ const MAP_PLATFORM_DATA = {
 };
 
 const healCoverageColor = n => n >= 5 ? "#22c55e" : n >= 4 ? "#84cc16" : n >= 3 ? "#eab308" : "#ef4444";
-const scoreColor = n => n >= 4 ? "#4ade80" : n === 3 ? "#facc15" : "#f87171";
+export const scoreColor = n => n >= 4 ? "#4ade80" : n === 3 ? "#facc15" : "#f87171";
 
 // Unified spawn-map lookup: prefer Map.wz-verified REAL_SPAWNS, fall back to
 // the hand-curated MONSTER_MAPS. Returns {name, mapId, count, verified}[] or null.
@@ -251,10 +73,10 @@ const scoreColor = n => n >= 4 ? "#4ade80" : n === 3 ? "#facc15" : "#f87171";
 // pulls "Street : Map Name" from) take priority over any hand-typed name, since
 // they're ground truth: a hand-curated entry earlier in this project mislabeled
 // map 100020000 as "Henesys Pig Farm" when the real Pig Farm is 100020100.
-function realMapName(mapId) {
+export function realMapName(mapId) {
   return (typeof MAP_NAMES !== "undefined" && MAP_NAMES[mapId]) || null;
 }
-function spawnMapsFor(monsterId) {
+export function spawnMapsFor(monsterId) {
   const real = REAL_SPAWNS[monsterId];
   if (real) {
     return real.map(([mapId, count]) => ({
@@ -275,11 +97,11 @@ function spawnMapsFor(monsterId) {
 const layoutIcon = l => l === "flat" ? "[=]" : l === "tiered" ? "[~]" : l === "vertical" ? "[|]" : "[?]";
 // Mirrors the ROPE-HEAVY / LOW SPAWN badge conditions in the spawn-map list below --
 // used by the "Hide Rope-Heavy Maps" / "Hide Low-Spawn Maps" filter chips.
-function isRopeHeavyMap(mapId) {
+export function isRopeHeavyMap(mapId) {
   const s = MAP_SCORES[mapId];
   return !!(s && s.ropeCount > 0 && s.mcScoreRaw > s.mcScore + (s.lowSpawnPenalty || 0));
 }
-function isLowSpawnMap(mapId) {
+export function isLowSpawnMap(mapId) {
   const s = MAP_SCORES[mapId];
   return !!(s && s.lowSpawnPenalty > 0);
 }
@@ -290,9 +112,47 @@ function isLowSpawnMap(mapId) {
 // "Hidden Street" maps came back reachable, and the 100 that didn't are legitimately
 // NPC/event-triggered (e.g. "1st Accompaniment", "The Other Dimension"), not normal areas --
 // but treat this as a strong signal, not certainty.
-function isUnreachableMap(mapId) {
+export function isUnreachableMap(mapId) {
   const s = MAP_SCORES[mapId];
   return !!(s && s.reachable === false);
+}
+// WORLD_MAP_DATA.spots[mapId].region is a raw WorldMap.wz image name (e.g. "WorldMap10"),
+// not a human zone -- grouped here into the classic continents/areas by cross-referencing
+// each region's actual map names (WorldMap10/12 are all Victoria Island fields + Sleepywood
+// dungeons; WorldMap20/21/40/50 are the Ossyria continent -- Orbis, El Nath, Aqua Road,
+// Leafre; Ludibrium's own areas plus its Purplewood/time-travel maps are grouped together;
+// Masteria and the Halloween Haunted House event are their own separate, later-added zones).
+const REGION_TO_ZONE = {
+  WorldMap00: "Maple Island",
+  WorldMap10: "Victoria Island",
+  WorldMap12: "Victoria Island",
+  WorldMap: "Victoria Island",
+  WorldMap20: "Ossyria",
+  WorldMap21: "Ossyria",
+  WorldMap40: "Ossyria",
+  WorldMap50: "Ossyria",
+  WorldMap30: "Ludibrium",
+  WorldMap31: "Ludibrium",
+  WorldMap140: "Ludibrium",
+  WorldMap60: "Mu Lung",
+  WorldMap141: "Masteria",
+  WorldMap142: "Haunted House",
+};
+export const ZONE_NAMES = ["Maple Island", "Victoria Island", "Ossyria", "Ludibrium", "Mu Lung", "Masteria", "Haunted House"];
+// Every zone a monster spawns in, from its known spawn maps' resolved world-map region.
+// Monsters with no spawn map data, or whose maps have no resolved world-map spot, yield
+// an empty set (so they simply won't match any zone filter, same as they already don't
+// show up for the "no map data" filter).
+export function monsterZones(m) {
+  const spawns = spawnMapsFor(m.id);
+  if (!spawns) return new Set();
+  const zones = new Set();
+  for (const { mapId } of spawns) {
+    const spot = WORLD_MAP_DATA.spots[mapId];
+    const zone = spot && REGION_TO_ZONE[spot.region];
+    if (zone) zones.add(zone);
+  }
+  return zones;
 }
 const CATALOG_TO_WZID = {"2":"100100","3":"100101","4":"120100","5":"130101","6":"130100","7":"210100","8":"1210100","9":"1210102","10":"1210101","11":"1110101","12":"1120100","13":"1110100","14":"1210103","15":"1130100","16":"2220100","17":"2300100","700004":"9300184","18":"2130103","19":"2110200","20":"2130100","21":"2230101","22":"2230102","1000":"2230103","1001":"5200000","23":"2230100","1002":"2230104","25":"3000001","26":"3000002","27":"3000003","28":"3000004","1003":"3000000","1004":"5200001","1005":"5200002","29":"3110100","30":"3210100","1011":"5300000","31":"3230100","1012":"3210200","1013":"3210201","1014":"3210202","1015":"5300001","32":"3230101","33":"3230300","34":"3230301","1019":"3230200","1021":"5400000","35":"3210800","36":"3230102","37":"4230100","700000":"9500326","38":"4230101","1032":"4230107","1036":"4230105","1039":"4230108","40":"4130100","1042":"4230106","41":"4130101","43":"4230102","44":"4230104","45":"5130100","1048":"5100000","46":"5130103","1052":"5120001","1053":"5120002","1054":"5120003","47":"5300100","1055":"5130104","48":"5130101","1056":"5130105","1058":"5130107","49":"5130102","1060":"5140000","50":"6130100","51":"6230100","52":"7130100","53":"7130101","1080":"7130200","700001":"8130100","700005":"8150000","1025":"3230306","1034":"4230114","1047":"4230115","1065":"6230400","1072":"6230500","1076":"8140200","1081":"8140300","1087":"7130010","1089":"7130300"};
 // Mob sprites: try local first (extracted stand/0.png, flattened via Flatten-MobThumbnails.ps1),
@@ -301,7 +161,7 @@ const CATALOG_TO_WZID = {"2":"100100","3":"100101","4":"120100","5":"130101","6"
 // curated rows need the crosswalk lookup above. Returns null (no fallback attempted) for
 // the curated rows that were never crosswalked to a real WZ id at all -- using their small
 // catalog number as a legends.ml id would silently fetch the wrong monster's image.
-function mobWzId(m) {
+export function mobWzId(m) {
   if (m.auto) return String(m.id);
   if (CATALOG_TO_WZID[m.id] !== undefined) return CATALOG_TO_WZID[m.id];
   return null;
@@ -373,8 +233,8 @@ const MONSTER_MAPS = {
 };
 // Tier is percentile-based (see effTier computation) not a fixed number -- "high" is
 // literally "top third of what's currently visible", so it stays meaningful across levels.
-const effTierColor = tier => tier === "high" ? "#22c55e" : tier === "mid" ? "#eab308" : "#ef4444";
-function formatExpPerHour(v) {
+export const effTierColor = tier => tier === "high" ? "#22c55e" : tier === "mid" ? "#eab308" : "#ef4444";
+export function formatExpPerHour(v) {
   if (v == null) return "--";
   if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + "M";
   if (v >= 1000) return (v / 1000).toFixed(1) + "K";
@@ -383,7 +243,7 @@ function formatExpPerHour(v) {
 // Picks black/white text for a #rrggbb background by relative luminance (WCAG-style),
 // so badge colors can stay bright/varied without hand-tuning text color per badge --
 // bright backgrounds (yellow, emerald, sky blue) get black text, dark ones get white.
-function contrastText(hex) {
+export function contrastText(hex) {
   const n = parseInt(hex.slice(1), 16);
   const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
@@ -689,11 +549,12 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                         <div style={{ display:"none", width:120, height:72, background:"#161b22", alignItems:"center", justifyContent:"center", fontSize:9, color:"#6b7280", textAlign:"center", padding:"4px" }}>
                           {verified ? "" : name}
                         </div>
-                        {/* External link to legends.ml full map page */}
+                        {/* External link to legends.ml full map page -- kept small so it doesn't
+                            crowd out the MC/HL score and map-quality badges on the thumbnail */}
                         <a href={mapUrl(mapId)} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()}
                           title="Open on legends.ml"
-                          style={{ position:"absolute", bottom:3, right:3, background:"#0d1117cc", color:"#9ca3af", fontSize:10, fontWeight:700, padding:"1px 5px", borderRadius:3, textDecoration:"none" }}>
-                          [open]
+                          style={{ position:"absolute", bottom:3, right:3, background:"#0d1117cc", color:"#9ca3af", fontSize:10, fontWeight:700, width:14, height:14, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:3, textDecoration:"none", lineHeight:1 }}>
+                          [+]
                         </a>
                         {/* Spawn count badge */}
                         <div style={{ position:"absolute", top:3, right:3, background:verified?"#166534":"#7c3aed", color:"#fff", fontSize:9, fontWeight:700, padding:"1px 5px", borderRadius:3, letterSpacing:0.5 }}>
@@ -794,6 +655,8 @@ export default function App() {
   const [undeadOnly, setUndeadOnly] = useState(false);
   const [autoOnly, setAutoOnly] = useState(false);
   const [hideUnknownLoc, setHideUnknownLoc] = useState(true); // hides m.location === "Location unknown" -- mostly event/unused mobs, pure noise
+  const [hideNoMapData, setHideNoMapData] = useState(true); // hides monsters with no spawnMapsFor() data at all -- unresolved crosswalk entries, not real farmable content
+  const [zoneFilter, setZoneFilter] = useState(null); // null = all zones; else a ZONE_NAMES entry -- monster matches if ANY of its spawn maps is in that zone
   const [hideRopeHeavy, setHideRopeHeavy] = useState(false); // hides monsters whose EVERY known spawn map is rope/ladder-heavy
   const [hideLowSpawn, setHideLowSpawn] = useState(false); // hides monsters whose EVERY known spawn map has low total mob supply
   const [hideUnreachable, setHideUnreachable] = useState(false); // hides monsters whose EVERY known spawn map has no portal-graph path from a town
@@ -821,6 +684,14 @@ export default function App() {
       if (undeadOnly && !UNDEAD_IDS.has(m.id)) return false;
       if (autoOnly && !m.auto) return false;
       if (hideUnknownLoc && m.location === "Location unknown") return false;
+      // No map data at all (spawnMapsFor returns null -- neither Map.wz-verified nor
+      // hand-curated) means an empty map-card list on the monster, which in practice
+      // marks a monster whose crosswalk never resolved to anything trustworthy (see
+      // the 17-monster "unresolved" set in monsterDb.js's header comment) -- these
+      // carry a plausible-looking hand-typed `location` string (so hideUnknownLoc alone
+      // doesn't catch them) but no verifiable spawn location at all.
+      if (hideNoMapData && !spawnMapsFor(m.id)) return false;
+      if (zoneFilter && !monsterZones(m).has(zoneFilter)) return false;
       if (weakFilter && m.weak !== weakFilter) return false;
       if (m.level < levelMin || m.level > levelMax) return false;
       if (query) {
@@ -943,7 +814,7 @@ export default function App() {
     else if (sortBy === "exp") list.sort((a,b) => sortDir*(a.exp2x - b.exp2x));
     else if (sortBy === "hp") list.sort((a,b) => sortDir*(a.hp - b.hp));
     return list;
-  }, [query, levelMin, levelMax, bossOnly, undeadOnly, autoOnly, hideUnknownLoc, hideRopeHeavy, hideLowSpawn, hideUnreachable, minMcMapScore, minHealMapScore, weakFilter, effFilter, castsFilter, sortBy, sortDir, healLvl, healTargets, mpEaterLvl, sessionMins, potionKey, CHAR, dmg]);
+  }, [query, levelMin, levelMax, bossOnly, undeadOnly, autoOnly, hideUnknownLoc, hideNoMapData, hideRopeHeavy, hideLowSpawn, hideUnreachable, minMcMapScore, minHealMapScore, weakFilter, effFilter, castsFilter, zoneFilter, sortBy, sortDir, healLvl, healTargets, mpEaterLvl, sessionMins, potionKey, CHAR, dmg]);
 
   return (
     <div style={{ minHeight:"100vh", background:"#0d1117", fontFamily:"monospace", color:"#e2e8f0" }}>
@@ -1087,6 +958,15 @@ export default function App() {
             ))}
           </FilterRow>
 
+          <FilterRow label="Zone" hint="Matches if ANY of the monster's known spawn maps falls in that zone (Maple Island, Victoria Island, Ossyria, Ludibrium, Mu Lung, Masteria, Haunted House)">
+            {ZONE_NAMES.map(z => (
+              <button key={z} onClick={()=>setZoneFilter(f=>f===z?null:z)}
+                style={{ background:"#161b22", border:`1px solid ${zoneFilter===z?"#7c3aed":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:zoneFilter===z?"#a78bfa":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:zoneFilter===z?700:400 }}>
+                {z}
+              </button>
+            ))}
+          </FilterRow>
+
           <FilterRow label="Elemental Weakness">
             {[["Lightning","Lightning"],["Holy","Holy"],["Fire","Fire"]].map(([l,w])=>(
               <button key={l} onClick={()=>setWeakFilter(f=>f===w?null:w)}
@@ -1133,6 +1013,11 @@ export default function App() {
               style={{ background:"#161b22", border:`1px solid ${hideUnknownLoc?"#374151":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:hideUnknownLoc?"#d1d5db":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:hideUnknownLoc?700:400 }}>
               {hideUnknownLoc ? "Hiding Unknown Loc." : "Show Unknown Loc."}
             </button>
+            <button onClick={()=>setHideNoMapData(v=>!v)}
+              title="Monsters with no spawn map data at all -- neither Map.wz-verified nor hand-curated -- are hidden by default (e.g. Jr. Necki (Strong), Ligator, Sporewood): the crosswalk never resolved these to anything trustworthy, despite a plausible-looking location label"
+              style={{ background:"#161b22", border:`1px solid ${hideNoMapData?"#374151":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:hideNoMapData?"#d1d5db":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:hideNoMapData?700:400 }}>
+              {hideNoMapData ? "Hiding No-Map Mobs" : "Show No-Map Mobs"}
+            </button>
             <button onClick={()=>setHideRopeHeavy(v=>!v)}
               title="Hides monsters whose EVERY known spawn map is rope/ladder-heavy (see the ROPE-HEAVY map badge) -- a monster with at least one non-rope-heavy map stays visible"
               style={{ background:"#161b22", border:`1px solid ${hideRopeHeavy?"#5c3315":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:hideRopeHeavy?"#f59e0b":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:hideRopeHeavy?700:400 }}>
@@ -1165,9 +1050,9 @@ export default function App() {
             </select>
           </FilterRow>
 
-          {(query || weakFilter || effFilter || castsFilter) && (
+          {(query || weakFilter || effFilter || castsFilter || zoneFilter) && (
             <div>
-              <button onClick={()=>{setQuery("");setWeakFilter(null);setEffFilter(null);setCastsFilter(null);}}
+              <button onClick={()=>{setQuery("");setWeakFilter(null);setEffFilter(null);setCastsFilter(null);setZoneFilter(null);}}
                 style={{ background:"#7c3aed22", border:"1px solid #7c3aed", borderRadius:4, padding:"3px 10px", color:"#a78bfa", fontFamily:"inherit", fontSize:11, cursor:"pointer" }}>
                 x Clear filters
               </button>
