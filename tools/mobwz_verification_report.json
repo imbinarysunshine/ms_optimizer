@@ -1,0 +1,3827 @@
+{
+ "resolved": [
+  {
+   "catalogId": "2",
+   "name": "Snail",
+   "wzId": "100100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 45,
+     "real": 8
+    },
+    "mp": {
+     "db": 30,
+     "real": 0
+    },
+    "wAtk": {
+     "db": 3,
+     "real": 12
+    },
+    "acc": {
+     "db": 33,
+     "real": 20
+    },
+    "exp": {
+     "db": 2,
+     "real": 3
+    }
+   }
+  },
+  {
+   "catalogId": "3",
+   "name": "Blue Snail",
+   "wzId": "100101",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 51,
+     "real": 15
+    },
+    "mp": {
+     "db": 30,
+     "real": 15
+    },
+    "wAtk": {
+     "db": 5,
+     "real": 17
+    },
+    "acc": {
+     "db": 39,
+     "real": 20
+    }
+   }
+  },
+  {
+   "catalogId": "4",
+   "name": "Shroom",
+   "wzId": "120100",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 3,
+     "real": 2
+    },
+    "hp": {
+     "db": 62,
+     "real": 20
+    },
+    "mp": {
+     "db": 30,
+     "real": 15
+    },
+    "wAtk": {
+     "db": 7,
+     "real": 17
+    },
+    "acc": {
+     "db": 44,
+     "real": 30
+    },
+    "exp": {
+     "db": 6,
+     "real": 5
+    }
+   }
+  },
+  {
+   "catalogId": "5",
+   "name": "Red Snail",
+   "wzId": "130101",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 68,
+     "real": 40
+    },
+    "wAtk": {
+     "db": 9,
+     "real": 27
+    },
+    "wDef": {
+     "db": 0,
+     "real": 3
+    },
+    "mDef": {
+     "db": 30,
+     "real": 10
+    },
+    "acc": {
+     "db": 45,
+     "real": 35
+    }
+   }
+  },
+  {
+   "catalogId": "6",
+   "name": "Stump",
+   "wzId": "130100",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 5,
+     "real": 4
+    },
+    "hp": {
+     "db": 133,
+     "real": 40
+    },
+    "wAtk": {
+     "db": 11,
+     "real": 30
+    },
+    "wDef": {
+     "db": 30,
+     "real": 0
+    },
+    "mDef": {
+     "db": 0,
+     "real": 10
+    },
+    "acc": {
+     "db": 45,
+     "real": 30
+    },
+    "exp": {
+     "db": 10,
+     "real": 8
+    }
+   }
+  },
+  {
+   "catalogId": "7",
+   "name": "Slime",
+   "wzId": "210100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 115,
+     "real": 50
+    },
+    "mp": {
+     "db": 30,
+     "real": 35
+    },
+    "wAtk": {
+     "db": 13,
+     "real": 32
+    },
+    "wDef": {
+     "db": 10,
+     "real": 5
+    },
+    "mDef": {
+     "db": 20,
+     "real": 10
+    },
+    "acc": {
+     "db": 53,
+     "real": 35
+    },
+    "avoid": {
+     "db": 0,
+     "real": 1
+    },
+    "exp": {
+     "db": 12,
+     "real": 10
+    }
+   }
+  },
+  {
+   "catalogId": "8",
+   "name": "Pig",
+   "wzId": "1210100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 128,
+     "real": 75
+    },
+    "mp": {
+     "db": 0,
+     "real": 40
+    },
+    "wAtk": {
+     "db": 15,
+     "real": 37
+    },
+    "wDef": {
+     "db": 0,
+     "real": 5
+    },
+    "mDef": {
+     "db": 0,
+     "real": 20
+    },
+    "acc": {
+     "db": 54,
+     "real": 40
+    },
+    "exp": {
+     "db": 13,
+     "real": 15
+    }
+   }
+  },
+  {
+   "catalogId": "9",
+   "name": "Orange Mushroom",
+   "wzId": "1210102",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 142,
+     "real": 80
+    },
+    "mp": {
+     "db": 30,
+     "real": 45
+    },
+    "wAtk": {
+     "db": 17,
+     "real": 42
+    },
+    "mDef": {
+     "db": 0,
+     "real": 10
+    },
+    "acc": {
+     "db": 62,
+     "real": 42
+    },
+    "avoid": {
+     "db": 0,
+     "real": 1
+    }
+   }
+  },
+  {
+   "catalogId": "10",
+   "name": "Ribbon Pig",
+   "wzId": "1210101",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 172,
+     "real": 120
+    },
+    "mp": {
+     "db": 0,
+     "real": 45
+    },
+    "wAtk": {
+     "db": 27,
+     "real": 70
+    },
+    "wDef": {
+     "db": 0,
+     "real": 10
+    },
+    "mDef": {
+     "db": 0,
+     "real": 30
+    },
+    "acc": {
+     "db": 64,
+     "real": 40
+    },
+    "avoid": {
+     "db": 6,
+     "real": 2
+    },
+    "exp": {
+     "db": 19,
+     "real": 20
+    }
+   }
+  },
+  {
+   "catalogId": "11",
+   "name": "Dark Stump",
+   "wzId": "1110101",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 11,
+     "real": 10
+    },
+    "hp": {
+     "db": 236,
+     "real": 250
+    },
+    "mp": {
+     "db": 30,
+     "real": 10
+    },
+    "wAtk": {
+     "db": 34,
+     "real": 65
+    },
+    "wDef": {
+     "db": 30,
+     "real": 20
+    },
+    "mDef": {
+     "db": 0,
+     "real": 10
+    },
+    "acc": {
+     "db": 61,
+     "real": 42
+    },
+    "avoid": {
+     "db": 5,
+     "real": 0
+    },
+    "exp": {
+     "db": 21,
+     "real": 18
+    }
+   }
+  },
+  {
+   "catalogId": "12",
+   "name": "Octopus",
+   "wzId": "1120100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 191,
+     "real": 200
+    },
+    "wAtk": {
+     "db": 40,
+     "real": 82
+    },
+    "wDef": {
+     "db": 0,
+     "real": 10
+    },
+    "mDef": {
+     "db": 30,
+     "real": 40
+    },
+    "acc": {
+     "db": 69,
+     "real": 40
+    },
+    "avoid": {
+     "db": 7,
+     "real": 4
+    },
+    "exp": {
+     "db": 23,
+     "real": 24
+    }
+   }
+  },
+  {
+   "catalogId": "13",
+   "name": "Green Mushroom",
+   "wzId": "1110100",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 14,
+     "real": 15
+    },
+    "hp": {
+     "db": 233,
+     "real": 250
+    },
+    "mp": {
+     "db": 30,
+     "real": 25
+    },
+    "wAtk": {
+     "db": 54,
+     "real": 82
+    },
+    "wDef": {
+     "db": 0,
+     "real": 12
+    },
+    "mDef": {
+     "db": 30,
+     "real": 40
+    },
+    "acc": {
+     "db": 79,
+     "real": 45
+    },
+    "avoid": {
+     "db": 8,
+     "real": 5
+    }
+   }
+  },
+  {
+   "catalogId": "14",
+   "name": "Bubbling",
+   "wzId": "1210103",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 259,
+     "real": 240
+    },
+    "mp": {
+     "db": 30,
+     "real": 10
+    },
+    "wAtk": {
+     "db": 61,
+     "real": 80
+    },
+    "wDef": {
+     "db": 20,
+     "real": 40
+    },
+    "mDef": {
+     "db": 10,
+     "real": 50
+    },
+    "acc": {
+     "db": 81,
+     "real": 80
+    },
+    "avoid": {
+     "db": 9,
+     "real": 5
+    },
+    "exp": {
+     "db": 28,
+     "real": 26
+    },
+    "weak": {
+     "db": "Lightning",
+     "real": "-"
+    }
+   }
+  },
+  {
+   "catalogId": "15",
+   "name": "Axe Stump",
+   "wzId": "1130100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 371,
+     "real": 300
+    },
+    "wAtk": {
+     "db": 75,
+     "real": 85
+    },
+    "mDef": {
+     "db": 0,
+     "real": 10
+    },
+    "acc": {
+     "db": 72,
+     "real": 50
+    },
+    "avoid": {
+     "db": 8,
+     "real": 5
+    },
+    "exp": {
+     "db": 32,
+     "real": 30
+    },
+    "weak": {
+     "db": "Fire",
+     "real": "-"
+    }
+   }
+  },
+  {
+   "catalogId": "16",
+   "name": "Blue Mushroom",
+   "wzId": "2220100",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 19,
+     "real": 20
+    },
+    "hp": {
+     "db": 342,
+     "real": 350
+    },
+    "wAtk": {
+     "db": 89,
+     "real": 90
+    },
+    "mDef": {
+     "db": 20,
+     "real": 60
+    },
+    "acc": {
+     "db": 85,
+     "real": 55
+    },
+    "avoid": {
+     "db": 11,
+     "real": 7
+    },
+    "exp": {
+     "db": 35,
+     "real": 32
+    }
+   }
+  },
+  {
+   "catalogId": "17",
+   "name": "Stirge",
+   "wzId": "2300100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 296,
+     "real": 300
+    },
+    "mp": {
+     "db": 30,
+     "real": 10
+    },
+    "wAtk": {
+     "db": 86,
+     "real": 85
+    },
+    "wDef": {
+     "db": 0,
+     "real": 20
+    },
+    "mDef": {
+     "db": 30,
+     "real": 20
+    },
+    "acc": {
+     "db": 99,
+     "real": 80
+    },
+    "avoid": {
+     "db": 13,
+     "real": 10
+    },
+    "exp": {
+     "db": 37,
+     "real": 33
+    }
+   }
+  },
+  {
+   "catalogId": "700004",
+   "name": "Mano",
+   "wzId": "9300184",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 7420,
+     "real": 2000
+    },
+    "wAtk": {
+     "db": 252,
+     "real": 90
+    },
+    "mDef": {
+     "db": 10,
+     "real": 30
+    },
+    "acc": {
+     "db": 97,
+     "real": 60
+    },
+    "avoid": {
+     "db": 9,
+     "real": 8
+    },
+    "exp": {
+     "db": 148,
+     "real": 120
+    }
+   }
+  },
+  {
+   "catalogId": "18",
+   "name": "Jr. Necki",
+   "wzId": "2130103",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 272,
+     "real": 285
+    },
+    "mp": {
+     "db": 30,
+     "real": 20
+    },
+    "wAtk": {
+     "db": 92,
+     "real": 100
+    },
+    "wDef": {
+     "db": 0,
+     "real": 30
+    },
+    "acc": {
+     "db": 102,
+     "real": 120
+    },
+    "avoid": {
+     "db": 14,
+     "real": 25
+    },
+    "exp": {
+     "db": 39,
+     "real": 38
+    }
+   }
+  },
+  {
+   "catalogId": "19",
+   "name": "Horny Mushroom",
+   "wzId": "2110200",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 403,
+     "real": 300
+    },
+    "mp": {
+     "db": 30,
+     "real": 35
+    },
+    "wAtk": {
+     "db": 110,
+     "real": 90
+    },
+    "wDef": {
+     "db": 10,
+     "real": 30
+    },
+    "acc": {
+     "db": 94,
+     "real": 55
+    },
+    "avoid": {
+     "db": 13,
+     "real": 7
+    },
+    "exp": {
+     "db": 41,
+     "real": 35
+    }
+   }
+  },
+  {
+   "catalogId": "20",
+   "name": "Dark Axe Stump",
+   "wzId": "2130100",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 23,
+     "real": 22
+    },
+    "hp": {
+     "db": 547,
+     "real": 550
+    },
+    "mp": {
+     "db": 30,
+     "real": 40
+    },
+    "wAtk": {
+     "db": 117,
+     "real": 85
+    },
+    "wDef": {
+     "db": 30,
+     "real": 50
+    },
+    "mDef": {
+     "db": 0,
+     "real": 20
+    },
+    "acc": {
+     "db": 87,
+     "real": 45
+    },
+    "avoid": {
+     "db": 11,
+     "real": 7
+    },
+    "exp": {
+     "db": 43,
+     "real": 38
+    }
+   }
+  },
+  {
+   "catalogId": "21",
+   "name": "Zombie Mushroom",
+   "wzId": "2230101",
+   "levelDiff": 0,
+   "undead": true,
+   "diffs": {
+    "hp": {
+     "db": 436,
+     "real": 500
+    },
+    "mp": {
+     "db": 30,
+     "real": 50
+    },
+    "wAtk": {
+     "db": 124,
+     "real": 95
+    },
+    "wDef": {
+     "db": 15,
+     "real": 20
+    },
+    "mDef": {
+     "db": 15,
+     "real": 30
+    },
+    "acc": {
+     "db": 99,
+     "real": 50
+    },
+    "avoid": {
+     "db": 14,
+     "real": 8
+    },
+    "exp": {
+     "db": 45,
+     "real": 42
+    }
+   }
+  },
+  {
+   "catalogId": "22",
+   "name": "Wild Boar",
+   "wzId": "2230102",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 510,
+     "real": 550
+    },
+    "mp": {
+     "db": 0,
+     "real": 55
+    },
+    "wAtk": {
+     "db": 131,
+     "real": 90
+    },
+    "wDef": {
+     "db": 15,
+     "real": 20
+    },
+    "mDef": {
+     "db": 15,
+     "real": 30
+    },
+    "acc": {
+     "db": 101,
+     "real": 50
+    },
+    "avoid": {
+     "db": 15,
+     "real": 8
+    },
+    "exp": {
+     "db": 46,
+     "real": 42
+    }
+   }
+  },
+  {
+   "catalogId": "1000",
+   "name": "Trixter",
+   "wzId": "2230103",
+   "levelDiff": 2,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 25,
+     "real": 23
+    },
+    "hp": {
+     "db": 510,
+     "real": 450
+    },
+    "wAtk": {
+     "db": 131,
+     "real": 95
+    },
+    "wDef": {
+     "db": 15,
+     "real": 52
+    },
+    "mDef": {
+     "db": 15,
+     "real": 65
+    },
+    "acc": {
+     "db": 111,
+     "real": 93
+    },
+    "avoid": {
+     "db": 17,
+     "real": 10
+    },
+    "exp": {
+     "db": 46,
+     "real": 42
+    },
+    "strong": {
+     "db": "Holy",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1001",
+   "name": "Jr. Sentinel",
+   "wzId": "5200000",
+   "levelDiff": 3,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 26,
+     "real": 23
+    },
+    "hp": {
+     "db": 531,
+     "real": 600
+    },
+    "mp": {
+     "db": 30,
+     "real": 10
+    },
+    "wAtk": {
+     "db": 124,
+     "real": 70
+    },
+    "wDef": {
+     "db": 10,
+     "real": 30
+    },
+    "mDef": {
+     "db": 20,
+     "real": 40
+    },
+    "acc": {
+     "db": 102,
+     "real": 55
+    },
+    "avoid": {
+     "db": 15,
+     "real": 8
+    },
+    "exp": {
+     "db": 48,
+     "real": 40
+    }
+   }
+  },
+  {
+   "catalogId": "23",
+   "name": "Evil Eye",
+   "wzId": "2230100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 606,
+     "real": 720
+    },
+    "mp": {
+     "db": 50,
+     "real": 40
+    },
+    "wAtk": {
+     "db": 159,
+     "real": 100
+    },
+    "wDef": {
+     "db": 10,
+     "real": 35
+    },
+    "mDef": {
+     "db": 20,
+     "real": 70
+    },
+    "acc": {
+     "db": 103,
+     "real": 60
+    },
+    "avoid": {
+     "db": 16,
+     "real": 10
+    }
+   }
+  },
+  {
+   "catalogId": "1002",
+   "name": "Green Trixter",
+   "wzId": "2230104",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 572,
+     "real": 780
+    },
+    "wAtk": {
+     "db": 152,
+     "real": 105
+    },
+    "wDef": {
+     "db": 15,
+     "real": 75
+    },
+    "mDef": {
+     "db": 15,
+     "real": 75
+    },
+    "acc": {
+     "db": 114,
+     "real": 115
+    },
+    "avoid": {
+     "db": 19,
+     "real": 12
+    },
+    "exp": {
+     "db": 52,
+     "real": 55
+    },
+    "weak": {
+     "db": "Fire",
+     "real": "-"
+    },
+    "strong": {
+     "db": "Holy",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "25",
+   "name": "Fairy 1",
+   "wzId": "3000001",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 29,
+     "real": 30
+    },
+    "hp": {
+     "db": 593,
+     "real": 800
+    },
+    "wAtk": {
+     "db": 127,
+     "real": 80
+    },
+    "wDef": {
+     "db": 0,
+     "real": 85
+    },
+    "mDef": {
+     "db": 500,
+     "real": 105
+    },
+    "acc": {
+     "db": 116,
+     "real": 145
+    },
+    "avoid": {
+     "db": 20,
+     "real": 25
+    },
+    "exp": {
+     "db": 54,
+     "real": 120
+    },
+    "weak": {
+     "db": "Poison",
+     "real": "-"
+    },
+    "strong": {
+     "db": "Holy/Lightning",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "26",
+   "name": "Fairy 2",
+   "wzId": "3000002",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 29,
+     "real": 30
+    },
+    "hp": {
+     "db": 593,
+     "real": 800
+    },
+    "wAtk": {
+     "db": 127,
+     "real": 80
+    },
+    "wDef": {
+     "db": 0,
+     "real": 85
+    },
+    "mDef": {
+     "db": 500,
+     "real": 105
+    },
+    "acc": {
+     "db": 116,
+     "real": 145
+    },
+    "avoid": {
+     "db": 20,
+     "real": 25
+    },
+    "exp": {
+     "db": 54,
+     "real": 120
+    },
+    "weak": {
+     "db": "Poison",
+     "real": "-"
+    },
+    "strong": {
+     "db": "Holy/Lightning",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "27",
+   "name": "Fairy 3",
+   "wzId": "3000003",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 29,
+     "real": 30
+    },
+    "hp": {
+     "db": 593,
+     "real": 800
+    },
+    "wAtk": {
+     "db": 127,
+     "real": 80
+    },
+    "wDef": {
+     "db": 0,
+     "real": 85
+    },
+    "mDef": {
+     "db": 500,
+     "real": 105
+    },
+    "acc": {
+     "db": 116,
+     "real": 145
+    },
+    "avoid": {
+     "db": 20,
+     "real": 25
+    },
+    "exp": {
+     "db": 54,
+     "real": 120
+    },
+    "weak": {
+     "db": "Poison",
+     "real": "-"
+    },
+    "strong": {
+     "db": "Holy/Lightning",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "28",
+   "name": "Fairy 4",
+   "wzId": "3000004",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 29,
+     "real": 30
+    },
+    "hp": {
+     "db": 593,
+     "real": 800
+    },
+    "wAtk": {
+     "db": 127,
+     "real": 80
+    },
+    "wDef": {
+     "db": 0,
+     "real": 85
+    },
+    "mDef": {
+     "db": 500,
+     "real": 105
+    },
+    "acc": {
+     "db": 116,
+     "real": 145
+    },
+    "avoid": {
+     "db": 20,
+     "real": 25
+    },
+    "exp": {
+     "db": 54,
+     "real": 120
+    },
+    "weak": {
+     "db": "Poison",
+     "real": "-"
+    },
+    "strong": {
+     "db": "Holy/Lightning",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1003",
+   "name": "Sentinel",
+   "wzId": "3000000",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 718,
+     "real": 900
+    },
+    "wAtk": {
+     "db": 149,
+     "real": 120
+    },
+    "mAtk": {
+     "db": 166,
+     "real": 118
+    },
+    "wDef": {
+     "db": 10,
+     "real": 275
+    },
+    "mDef": {
+     "db": 20,
+     "real": 85
+    },
+    "acc": {
+     "db": 108,
+     "real": 75
+    },
+    "avoid": {
+     "db": 18,
+     "real": 12
+    },
+    "exp": {
+     "db": 56,
+     "real": 55
+    },
+    "strong": {
+     "db": "Holy/Lightning",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1004",
+   "name": "Ice Sentinel",
+   "wzId": "5200001",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 718,
+     "real": 900
+    },
+    "wAtk": {
+     "db": 149,
+     "real": 105
+    },
+    "mAtk": {
+     "db": 166,
+     "real": 118
+    },
+    "wDef": {
+     "db": 10,
+     "real": 275
+    },
+    "mDef": {
+     "db": 20,
+     "real": 85
+    },
+    "acc": {
+     "db": 108,
+     "real": 75
+    },
+    "avoid": {
+     "db": 18,
+     "real": 12
+    },
+    "exp": {
+     "db": 56,
+     "real": 55
+    },
+    "strong": {
+     "db": "Ice",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1005",
+   "name": "Fire Sentinel",
+   "wzId": "5200002",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 718,
+     "real": 900
+    },
+    "wAtk": {
+     "db": 149,
+     "real": 105
+    },
+    "mAtk": {
+     "db": 166,
+     "real": 118
+    },
+    "wDef": {
+     "db": 10,
+     "real": 275
+    },
+    "mDef": {
+     "db": 20,
+     "real": 85
+    },
+    "acc": {
+     "db": 108,
+     "real": 75
+    },
+    "avoid": {
+     "db": 18,
+     "real": 12
+    },
+    "exp": {
+     "db": 56,
+     "real": 55
+    },
+    "weak": {
+     "db": "-",
+     "real": "Ice"
+    },
+    "strong": {
+     "db": "Fire",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "29",
+   "name": "Ligator",
+   "wzId": "3110100",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 31,
+     "real": 32
+    },
+    "hp": {
+     "db": 853,
+     "real": 1200
+    },
+    "mp": {
+     "db": 0,
+     "real": 40
+    },
+    "wAtk": {
+     "db": 176,
+     "real": 110
+    },
+    "wDef": {
+     "db": 10,
+     "real": 45
+    },
+    "mDef": {
+     "db": 0,
+     "real": 40
+    },
+    "acc": {
+     "db": 110,
+     "real": 70
+    },
+    "avoid": {
+     "db": 19,
+     "real": 12
+    },
+    "exp": {
+     "db": 59,
+     "real": 60
+    },
+    "strong": {
+     "db": "Ice",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "30",
+   "name": "Fire Boar",
+   "wzId": "3210100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 842,
+     "real": 1000
+    },
+    "mp": {
+     "db": 0,
+     "real": 60
+    },
+    "wAtk": {
+     "db": 180,
+     "real": 110
+    },
+    "wDef": {
+     "db": 10,
+     "real": 40
+    },
+    "mDef": {
+     "db": 0,
+     "real": 40
+    },
+    "acc": {
+     "db": 110,
+     "real": 60
+    },
+    "avoid": {
+     "db": 20,
+     "real": 10
+    },
+    "exp": {
+     "db": 62,
+     "real": 60
+    },
+    "strong": {
+     "db": "Fire",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1011",
+   "name": "Leatty",
+   "wzId": "5300000",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 841,
+     "real": 1000
+    },
+    "mp": {
+     "db": 50,
+     "real": 40
+    },
+    "wAtk": {
+     "db": 198,
+     "real": 110
+    },
+    "wDef": {
+     "db": 20,
+     "real": 45
+    },
+    "mDef": {
+     "db": 10,
+     "real": 70
+    },
+    "acc": {
+     "db": 99,
+     "real": 65
+    },
+    "avoid": {
+     "db": 20,
+     "real": 13
+    },
+    "exp": {
+     "db": 62,
+     "real": 60
+    },
+    "strong": {
+     "db": "Ice",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "31",
+   "name": "Curse Eye",
+   "wzId": "3230100",
+   "levelDiff": 2,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 33,
+     "real": 35
+    },
+    "hp": {
+     "db": 1001,
+     "real": 1250
+    },
+    "mp": {
+     "db": 50,
+     "real": 65
+    },
+    "wAtk": {
+     "db": 202,
+     "real": 120
+    },
+    "wDef": {
+     "db": 30,
+     "real": 45
+    },
+    "mDef": {
+     "db": 0,
+     "real": 70
+    },
+    "acc": {
+     "db": 112,
+     "real": 60
+    },
+    "avoid": {
+     "db": 21,
+     "real": 10
+    },
+    "exp": {
+     "db": 66,
+     "real": 70
+    },
+    "strong": {
+     "db": "Poison",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1012",
+   "name": "Jr. Cellion",
+   "wzId": "3210200",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 910,
+     "real": 1100
+    },
+    "wAtk": {
+     "db": 185,
+     "real": 105
+    },
+    "wDef": {
+     "db": 10,
+     "real": 60
+    },
+    "mDef": {
+     "db": 20,
+     "real": 80
+    },
+    "acc": {
+     "db": 112,
+     "real": 95
+    },
+    "avoid": {
+     "db": 24,
+     "real": 15
+    },
+    "exp": {
+     "db": 66,
+     "real": 65
+    },
+    "strong": {
+     "db": "Fire",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1013",
+   "name": "Jr. Lioner",
+   "wzId": "3210201",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 910,
+     "real": 1100
+    },
+    "wAtk": {
+     "db": 185,
+     "real": 105
+    },
+    "wDef": {
+     "db": 10,
+     "real": 60
+    },
+    "mDef": {
+     "db": 20,
+     "real": 80
+    },
+    "acc": {
+     "db": 112,
+     "real": 95
+    },
+    "avoid": {
+     "db": 24,
+     "real": 15
+    },
+    "exp": {
+     "db": 66,
+     "real": 65
+    },
+    "strong": {
+     "db": "Lightning",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1014",
+   "name": "Jr. Grupin",
+   "wzId": "3210202",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 910,
+     "real": 1100
+    },
+    "wAtk": {
+     "db": 185,
+     "real": 105
+    },
+    "wDef": {
+     "db": 10,
+     "real": 60
+    },
+    "mDef": {
+     "db": 20,
+     "real": 80
+    },
+    "acc": {
+     "db": 112,
+     "real": 95
+    },
+    "avoid": {
+     "db": 24,
+     "real": 15
+    },
+    "exp": {
+     "db": 66,
+     "real": 65
+    },
+    "weak": {
+     "db": "Ice",
+     "real": "Fire"
+    },
+    "strong": {
+     "db": "Fire",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1015",
+   "name": "Dark Leatty",
+   "wzId": "5300001",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 910,
+     "real": 1100
+    },
+    "mp": {
+     "db": 50,
+     "real": 60
+    },
+    "wAtk": {
+     "db": 202,
+     "real": 120
+    },
+    "wDef": {
+     "db": 20,
+     "real": 60
+    },
+    "mDef": {
+     "db": 10,
+     "real": 80
+    },
+    "acc": {
+     "db": 112,
+     "real": 65
+    },
+    "avoid": {
+     "db": 21,
+     "real": 15
+    },
+    "exp": {
+     "db": 66,
+     "real": 65
+    }
+   }
+  },
+  {
+   "catalogId": "32",
+   "name": "Jr. Wraith",
+   "wzId": "3230101",
+   "levelDiff": 1,
+   "undead": true,
+   "diffs": {
+    "level": {
+     "db": 34,
+     "real": 35
+    },
+    "hp": {
+     "db": 982,
+     "real": 1200
+    },
+    "mp": {
+     "db": 70,
+     "real": 80
+    },
+    "wAtk": {
+     "db": 170,
+     "real": 110
+    },
+    "wDef": {
+     "db": 30,
+     "real": 90
+    },
+    "mDef": {
+     "db": 0,
+     "real": 90
+    },
+    "acc": {
+     "db": 112,
+     "real": 100
+    },
+    "avoid": {
+     "db": 24,
+     "real": 17
+    },
+    "weak": {
+     "db": "Holy/Fire",
+     "real": "Holy"
+    }
+   }
+  },
+  {
+   "catalogId": "33",
+   "name": "Jr. Boogie 1",
+   "wzId": "3230300",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 1395,
+     "real": 1700
+    },
+    "wAtk": {
+     "db": 154,
+     "real": 90
+    },
+    "wDef": {
+     "db": 50,
+     "real": 120
+    },
+    "mDef": {
+     "db": 50,
+     "real": 155
+    },
+    "acc": {
+     "db": 125,
+     "real": 150
+    },
+    "avoid": {
+     "db": 25,
+     "real": 27
+    },
+    "exp": {
+     "db": 74,
+     "real": 150
+    },
+    "strong": {
+     "db": "Poison",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "34",
+   "name": "Jr. Boogie 2",
+   "wzId": "3230301",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 1395,
+     "real": 1700
+    },
+    "wAtk": {
+     "db": 154,
+     "real": 90
+    },
+    "wDef": {
+     "db": 50,
+     "real": 120
+    },
+    "mDef": {
+     "db": 50,
+     "real": 155
+    },
+    "acc": {
+     "db": 125,
+     "real": 150
+    },
+    "avoid": {
+     "db": 25,
+     "real": 27
+    },
+    "exp": {
+     "db": 74,
+     "real": 150
+    },
+    "strong": {
+     "db": "Poison",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1019",
+   "name": "Star Pixie",
+   "wzId": "3230200",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 930,
+     "real": 1300
+    },
+    "mp": {
+     "db": 70,
+     "real": 100
+    },
+    "wAtk": {
+     "db": 154,
+     "real": 120
+    },
+    "mAtk": {
+     "db": 212,
+     "real": 130
+    },
+    "wDef": {
+     "db": 0,
+     "real": 100
+    },
+    "mDef": {
+     "db": 30,
+     "real": 100
+    },
+    "acc": {
+     "db": 125,
+     "real": 145
+    },
+    "avoid": {
+     "db": 22,
+     "real": 21
+    },
+    "exp": {
+     "db": 74,
+     "real": 72
+    },
+    "strong": {
+     "db": "Holy",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1021",
+   "name": "Jr. Pepe",
+   "wzId": "5400000",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 1279,
+     "real": 1400
+    },
+    "mp": {
+     "db": 50,
+     "real": 70
+    },
+    "wAtk": {
+     "db": 174,
+     "real": 130
+    },
+    "wDef": {
+     "db": 15,
+     "real": 110
+    },
+    "mDef": {
+     "db": 15,
+     "real": 100
+    },
+    "acc": {
+     "db": 114,
+     "real": 105
+    },
+    "avoid": {
+     "db": 22,
+     "real": 18
+    },
+    "exp": {
+     "db": 74,
+     "real": 75
+    },
+    "weak": {
+     "db": "Ice",
+     "real": "Fire"
+    },
+    "strong": {
+     "db": "Fire",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "35",
+   "name": "Lupin",
+   "wzId": "3210800",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 1336,
+     "real": 1500
+    },
+    "wAtk": {
+     "db": 203,
+     "real": 110
+    },
+    "mAtk": {
+     "db": 222,
+     "real": 125
+    },
+    "wDef": {
+     "db": 0,
+     "real": 35
+    },
+    "mDef": {
+     "db": 30,
+     "real": 40
+    },
+    "acc": {
+     "db": 116,
+     "real": 100
+    },
+    "avoid": {
+     "db": 26,
+     "real": 20
+    },
+    "exp": {
+     "db": 82,
+     "real": 77
+    }
+   }
+  },
+  {
+   "catalogId": "36",
+   "name": "Lorang",
+   "wzId": "3230102",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 38,
+     "real": 37
+    },
+    "hp": {
+     "db": 1714,
+     "real": 1950
+    },
+    "wAtk": {
+     "db": 207,
+     "real": 125
+    },
+    "wDef": {
+     "db": 0,
+     "real": 100
+    },
+    "mDef": {
+     "db": 30,
+     "real": 200
+    },
+    "acc": {
+     "db": 116,
+     "real": 85
+    },
+    "avoid": {
+     "db": 23,
+     "real": 18
+    },
+    "exp": {
+     "db": 86,
+     "real": 80
+    }
+   }
+  },
+  {
+   "catalogId": "37",
+   "name": "Cold Eye",
+   "wzId": "4230100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 1894,
+     "real": 2000
+    },
+    "wAtk": {
+     "db": 237,
+     "real": 130
+    },
+    "wDef": {
+     "db": 0,
+     "real": 80
+    },
+    "mDef": {
+     "db": 30,
+     "real": 80
+    },
+    "acc": {
+     "db": 120,
+     "real": 65
+    },
+    "avoid": {
+     "db": 24,
+     "real": 15
+    },
+    "exp": {
+     "db": 94,
+     "real": 85
+    },
+    "strong": {
+     "db": "Ice",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "700000",
+   "name": "Mushmom",
+   "wzId": "9500326",
+   "levelDiff": 5,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 40,
+     "real": 45
+    },
+    "hp": {
+     "db": 34440,
+     "real": 25500
+    },
+    "wAtk": {
+     "db": 532,
+     "real": 140
+    },
+    "mAtk": {
+     "db": 585,
+     "real": 155
+    },
+    "wDef": {
+     "db": 15,
+     "real": 180
+    },
+    "mDef": {
+     "db": 15,
+     "real": 200
+    },
+    "acc": {
+     "db": 130,
+     "real": 210
+    },
+    "avoid": {
+     "db": 24,
+     "real": 21
+    },
+    "exp": {
+     "db": 376,
+     "real": 550
+    }
+   }
+  },
+  {
+   "catalogId": "38",
+   "name": "Zombie Lupin",
+   "wzId": "4230101",
+   "levelDiff": 1,
+   "undead": true,
+   "diffs": {
+    "level": {
+     "db": 41,
+     "real": 40
+    },
+    "hp": {
+     "db": 1774,
+     "real": 1800
+    },
+    "mp": {
+     "db": 50,
+     "real": 100
+    },
+    "wAtk": {
+     "db": 221,
+     "real": 120
+    },
+    "mAtk": {
+     "db": 242,
+     "real": 135
+    },
+    "wDef": {
+     "db": 0,
+     "real": 70
+    },
+    "mDef": {
+     "db": 30,
+     "real": 70
+    },
+    "acc": {
+     "db": 121,
+     "real": 110
+    },
+    "avoid": {
+     "db": 28,
+     "real": 25
+    },
+    "exp": {
+     "db": 99,
+     "real": 90
+    }
+   }
+  },
+  {
+   "catalogId": "1032",
+   "name": "Flyeye",
+   "wzId": "4230107",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 1419,
+     "real": 1600
+    },
+    "mp": {
+     "db": 60,
+     "real": 80
+    },
+    "wAtk": {
+     "db": 198,
+     "real": 130
+    },
+    "wDef": {
+     "db": 0,
+     "real": 90
+    },
+    "mDef": {
+     "db": 30,
+     "real": 110
+    },
+    "acc": {
+     "db": 133,
+     "real": 160
+    },
+    "exp": {
+     "db": 99,
+     "real": 95
+    }
+   }
+  },
+  {
+   "catalogId": "1036",
+   "name": "Nependeath",
+   "wzId": "4230105",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 1827,
+     "real": 2100
+    },
+    "mp": {
+     "db": 50,
+     "real": 120
+    },
+    "wAtk": {
+     "db": 225,
+     "real": 135
+    },
+    "mAtk": {
+     "db": 0,
+     "real": 145
+    },
+    "wDef": {
+     "db": 15,
+     "real": 120
+    },
+    "mDef": {
+     "db": 15,
+     "real": 120
+    },
+    "acc": {
+     "db": 133,
+     "real": 150
+    },
+    "avoid": {
+     "db": 22,
+     "real": 10
+    },
+    "exp": {
+     "db": 103,
+     "real": 99
+    }
+   }
+  },
+  {
+   "catalogId": "1039",
+   "name": "Jr. Cerebes",
+   "wzId": "4230108",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 1881,
+     "real": 2300
+    },
+    "mp": {
+     "db": 30,
+     "real": 20
+    },
+    "wAtk": {
+     "db": 230,
+     "real": 132
+    },
+    "wDef": {
+     "db": 15,
+     "real": 290
+    },
+    "mDef": {
+     "db": 15,
+     "real": 150
+    },
+    "acc": {
+     "db": 135,
+     "real": 155
+    },
+    "avoid": {
+     "db": 28,
+     "real": 25
+    },
+    "exp": {
+     "db": 108,
+     "real": 102
+    }
+   }
+  },
+  {
+   "catalogId": "40",
+   "name": "Copper Drake",
+   "wzId": "4130100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 2595,
+     "real": 2700
+    },
+    "wAtk": {
+     "db": 262,
+     "real": 150
+    },
+    "wDef": {
+     "db": 15,
+     "real": 100
+    },
+    "mDef": {
+     "db": 15,
+     "real": 100
+    },
+    "acc": {
+     "db": 124,
+     "real": 70
+    },
+    "avoid": {
+     "db": 27,
+     "real": 18
+    },
+    "exp": {
+     "db": 117,
+     "real": 105
+    },
+    "weak": {
+     "db": "Ice",
+     "real": "-"
+    },
+    "strong": {
+     "db": "Fire",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1042",
+   "name": "Lunar Pixie",
+   "wzId": "4230106",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 1730,
+     "real": 2500
+    },
+    "mp": {
+     "db": 80,
+     "real": 115
+    },
+    "wAtk": {
+     "db": 190,
+     "real": 140
+    },
+    "mAtk": {
+     "db": 262,
+     "real": 155
+    },
+    "wDef": {
+     "db": 0,
+     "real": 145
+    },
+    "mDef": {
+     "db": 30,
+     "real": 160
+    },
+    "acc": {
+     "db": 136,
+     "real": 165
+    },
+    "avoid": {
+     "db": 30,
+     "real": 24
+    },
+    "exp": {
+     "db": 117,
+     "real": 105
+    },
+    "strong": {
+     "db": "Holy",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "41",
+   "name": "Tortie",
+   "wzId": "4130101",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 2671,
+     "real": 2550
+    },
+    "wAtk": {
+     "db": 243,
+     "real": 125
+    },
+    "mAtk": {
+     "db": 267,
+     "real": 160
+    },
+    "wDef": {
+     "db": 30,
+     "real": 300
+    },
+    "mDef": {
+     "db": 0,
+     "real": 300
+    },
+    "acc": {
+     "db": 125,
+     "real": 130
+    },
+    "avoid": {
+     "db": 24,
+     "real": 15
+    },
+    "exp": {
+     "db": 122,
+     "real": 110
+    }
+   }
+  },
+  {
+   "catalogId": "43",
+   "name": "Wraith",
+   "wzId": "4230102",
+   "levelDiff": 0,
+   "undead": true,
+   "diffs": {
+    "hp": {
+     "db": 2350,
+     "real": 2800
+    },
+    "wAtk": {
+     "db": 226,
+     "real": 155
+    },
+    "wDef": {
+     "db": 30,
+     "real": 180
+    },
+    "mDef": {
+     "db": 0,
+     "real": 180
+    },
+    "acc": {
+     "db": 127,
+     "real": 130
+    },
+    "avoid": {
+     "db": 31,
+     "real": 20
+    },
+    "exp": {
+     "db": 132,
+     "real": 120
+    }
+   }
+  },
+  {
+   "catalogId": "44",
+   "name": "Clang",
+   "wzId": "4230104",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 49,
+     "real": 48
+    },
+    "hp": {
+     "db": 2899,
+     "real": 3000
+    },
+    "wAtk": {
+     "db": 257,
+     "real": 160
+    },
+    "wDef": {
+     "db": 15,
+     "real": 120
+    },
+    "mDef": {
+     "db": 15,
+     "real": 150
+    },
+    "acc": {
+     "db": 128,
+     "real": 150
+    },
+    "avoid": {
+     "db": 29,
+     "real": 20
+    },
+    "exp": {
+     "db": 137,
+     "real": 128
+    }
+   }
+  },
+  {
+   "catalogId": "45",
+   "name": "Drake",
+   "wzId": "5130100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 3218,
+     "real": 3200
+    },
+    "mp": {
+     "db": 150,
+     "real": 100
+    },
+    "wAtk": {
+     "db": 287,
+     "real": 165
+    },
+    "wDef": {
+     "db": 15,
+     "real": 110
+    },
+    "mDef": {
+     "db": 15,
+     "real": 150
+    },
+    "acc": {
+     "db": 129,
+     "real": 75
+    },
+    "avoid": {
+     "db": 26,
+     "real": 18
+    },
+    "exp": {
+     "db": 142,
+     "real": 135
+    },
+    "strong": {
+     "db": "Fire/Ice",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1048",
+   "name": "Jr. Yeti",
+   "wzId": "5100000",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 2682,
+     "real": 3700
+    },
+    "mp": {
+     "db": 0,
+     "real": 20
+    },
+    "wAtk": {
+     "db": 261,
+     "real": 150
+    },
+    "wDef": {
+     "db": 15,
+     "real": 170
+    },
+    "mDef": {
+     "db": 15,
+     "real": 180
+    },
+    "acc": {
+     "db": 116,
+     "real": 120
+    },
+    "avoid": {
+     "db": 29,
+     "real": 25
+    },
+    "exp": {
+     "db": 142,
+     "real": 135
+    },
+    "weak": {
+     "db": "Ice",
+     "real": "Fire"
+    },
+    "strong": {
+     "db": "Fire",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "46",
+   "name": "Croco",
+   "wzId": "5130103",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 3136,
+     "real": 3800
+    },
+    "wAtk": {
+     "db": 270,
+     "real": 172
+    },
+    "wDef": {
+     "db": 10,
+     "real": 120
+    },
+    "mDef": {
+     "db": 0,
+     "real": 80
+    },
+    "acc": {
+     "db": 131,
+     "real": 80
+    },
+    "avoid": {
+     "db": 30,
+     "real": 20
+    },
+    "exp": {
+     "db": 155,
+     "real": 170
+    },
+    "weak": {
+     "db": "Fire",
+     "real": "-"
+    },
+    "strong": {
+     "db": "Ice",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1052",
+   "name": "Cellion",
+   "wzId": "5120001",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 2934,
+     "real": 4200
+    },
+    "mp": {
+     "db": 90,
+     "real": 160
+    },
+    "wAtk": {
+     "db": 275,
+     "real": 150
+    },
+    "mAtk": {
+     "db": 301,
+     "real": 175
+    },
+    "wDef": {
+     "db": 10,
+     "real": 170
+    },
+    "mDef": {
+     "db": 20,
+     "real": 210
+    },
+    "acc": {
+     "db": 132,
+     "real": 150
+    },
+    "avoid": {
+     "db": 34,
+     "real": 25
+    },
+    "exp": {
+     "db": 162,
+     "real": 160
+    },
+    "strong": {
+     "db": "Fire",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1053",
+   "name": "Lioner",
+   "wzId": "5120002",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 2934,
+     "real": 4200
+    },
+    "mp": {
+     "db": 90,
+     "real": 160
+    },
+    "wAtk": {
+     "db": 275,
+     "real": 150
+    },
+    "mAtk": {
+     "db": 301,
+     "real": 175
+    },
+    "wDef": {
+     "db": 10,
+     "real": 170
+    },
+    "mDef": {
+     "db": 20,
+     "real": 210
+    },
+    "acc": {
+     "db": 132,
+     "real": 150
+    },
+    "avoid": {
+     "db": 34,
+     "real": 25
+    },
+    "exp": {
+     "db": 162,
+     "real": 160
+    },
+    "strong": {
+     "db": "Lightning",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1054",
+   "name": "Grupin",
+   "wzId": "5120003",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 2934,
+     "real": 4200
+    },
+    "mp": {
+     "db": 90,
+     "real": 160
+    },
+    "wAtk": {
+     "db": 275,
+     "real": 150
+    },
+    "mAtk": {
+     "db": 301,
+     "real": 175
+    },
+    "wDef": {
+     "db": 10,
+     "real": 170
+    },
+    "mDef": {
+     "db": 20,
+     "real": 210
+    },
+    "acc": {
+     "db": 132,
+     "real": 150
+    },
+    "avoid": {
+     "db": 34,
+     "real": 25
+    },
+    "exp": {
+     "db": 162,
+     "real": 160
+    },
+    "weak": {
+     "db": "Ice",
+     "real": "Fire"
+    },
+    "strong": {
+     "db": "Fire",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "47",
+   "name": "Malady",
+   "wzId": "5300100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 2998,
+     "real": 4000
+    },
+    "wAtk": {
+     "db": 226,
+     "real": 170
+    },
+    "mAtk": {
+     "db": 311,
+     "real": 0
+    },
+    "wDef": {
+     "db": 0,
+     "real": 100
+    },
+    "mDef": {
+     "db": 50,
+     "real": 200
+    },
+    "acc": {
+     "db": 146,
+     "real": 150
+    },
+    "avoid": {
+     "db": 32,
+     "real": 20
+    },
+    "strong": {
+     "db": "Fire/Ice",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1055",
+   "name": "Hector",
+   "wzId": "5130104",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 3665,
+     "real": 4600
+    },
+    "mp": {
+     "db": 30,
+     "real": 50
+    },
+    "wAtk": {
+     "db": 284,
+     "real": 165
+    },
+    "mAtk": {
+     "db": 311,
+     "real": 175
+    },
+    "wDef": {
+     "db": 20,
+     "real": 120
+    },
+    "mDef": {
+     "db": 10,
+     "real": 120
+    },
+    "acc": {
+     "db": 133,
+     "real": 100
+    },
+    "avoid": {
+     "db": 32,
+     "real": 20
+    },
+    "exp": {
+     "db": 175,
+     "real": 170
+    }
+   }
+  },
+  {
+   "catalogId": "48",
+   "name": "Stone Golem",
+   "wzId": "5130101",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 56,
+     "real": 55
+    },
+    "hp": {
+     "db": 5134,
+     "real": 4000
+    },
+    "wAtk": {
+     "db": 288,
+     "real": 180
+    },
+    "wDef": {
+     "db": 30,
+     "real": 130
+    },
+    "mDef": {
+     "db": 0,
+     "real": 100
+    },
+    "acc": {
+     "db": 120,
+     "real": 80
+    },
+    "avoid": {
+     "db": 28,
+     "real": 15
+    },
+    "exp": {
+     "db": 183,
+     "real": 170
+    },
+    "strong": {
+     "db": "Poison",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1056",
+   "name": "Dark Jr. Yeti",
+   "wzId": "5130105",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 3423,
+     "real": 4400
+    },
+    "mp": {
+     "db": 0,
+     "real": 40
+    },
+    "wAtk": {
+     "db": 288,
+     "real": 155
+    },
+    "wDef": {
+     "db": 15,
+     "real": 180
+    },
+    "mDef": {
+     "db": 15,
+     "real": 190
+    },
+    "acc": {
+     "db": 120,
+     "real": 130
+    },
+    "avoid": {
+     "db": 32,
+     "real": 27
+    },
+    "exp": {
+     "db": 183,
+     "real": 180
+    }
+   }
+  },
+  {
+   "catalogId": "1058",
+   "name": "Coolie Zombie",
+   "wzId": "5130107",
+   "levelDiff": 0,
+   "undead": true,
+   "diffs": {
+    "hp": {
+     "db": 3520,
+     "real": 4500
+    },
+    "mp": {
+     "db": 60,
+     "real": 110
+    },
+    "wAtk": {
+     "db": 321,
+     "real": 165
+    },
+    "mAtk": {
+     "db": 321,
+     "real": 185
+    },
+    "wDef": {
+     "db": 10,
+     "real": 165
+    },
+    "mDef": {
+     "db": 20,
+     "real": 180
+    },
+    "acc": {
+     "db": 134,
+     "real": 135
+    },
+    "avoid": {
+     "db": 33,
+     "real": 25
+    }
+   }
+  },
+  {
+   "catalogId": "49",
+   "name": "Dark Stone Golem",
+   "wzId": "5130102",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 5428,
+     "real": 4800
+    },
+    "wAtk": {
+     "db": 297,
+     "real": 195
+    },
+    "wDef": {
+     "db": 0,
+     "real": 150
+    },
+    "mDef": {
+     "db": 30,
+     "real": 200
+    },
+    "acc": {
+     "db": 121,
+     "real": 70
+    },
+    "avoid": {
+     "db": 29,
+     "real": 18
+    },
+    "exp": {
+     "db": 197,
+     "real": 200
+    },
+    "strong": {
+     "db": "Fire/Poison",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1060",
+   "name": "White Fang",
+   "wzId": "5140000",
+   "levelDiff": 1,
+   "undead": false,
+   "diffs": {
+    "level": {
+     "db": 59,
+     "real": 58
+    },
+    "hp": {
+     "db": 4090,
+     "real": 5800
+    },
+    "mp": {
+     "db": 30,
+     "real": 100
+    },
+    "wAtk": {
+     "db": 302,
+     "real": 170
+    },
+    "mAtk": {
+     "db": 331,
+     "real": 205
+    },
+    "wDef": {
+     "db": 20,
+     "real": 200
+    },
+    "mDef": {
+     "db": 10,
+     "real": 220
+    },
+    "acc": {
+     "db": 136,
+     "real": 150
+    },
+    "avoid": {
+     "db": 34,
+     "real": 25
+    },
+    "exp": {
+     "db": 205,
+     "real": 220
+    },
+    "strong": {
+     "db": "Ice",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "50",
+   "name": "Red Drake",
+   "wzId": "6130100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 5184,
+     "real": 6000
+    },
+    "wAtk": {
+     "db": 306,
+     "real": 200
+    },
+    "mAtk": {
+     "db": 336,
+     "real": 220
+    },
+    "wDef": {
+     "db": 15,
+     "real": 190
+    },
+    "mDef": {
+     "db": 15,
+     "real": 220
+    },
+    "avoid": {
+     "db": 34,
+     "real": 22
+    },
+    "exp": {
+     "db": 213,
+     "real": 220
+    },
+    "strong": {
+     "db": "Fire",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "51",
+   "name": "Wild Kargo",
+   "wzId": "6230100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 5057,
+     "real": 5500
+    },
+    "wAtk": {
+     "db": 315,
+     "real": 210
+    },
+    "wDef": {
+     "db": 30,
+     "real": 180
+    },
+    "mDef": {
+     "db": 0,
+     "real": 130
+    },
+    "acc": {
+     "db": 138,
+     "real": 100
+    },
+    "avoid": {
+     "db": 35,
+     "real": 20
+    },
+    "exp": {
+     "db": 229,
+     "real": 240
+    }
+   }
+  },
+  {
+   "catalogId": "52",
+   "name": "Tauromacis",
+   "wzId": "7130100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 9328,
+     "real": 15000
+    },
+    "mp": {
+     "db": 120,
+     "real": 200
+    },
+    "wAtk": {
+     "db": 386,
+     "real": 270
+    },
+    "mAtk": {
+     "db": 386,
+     "real": 320
+    },
+    "wDef": {
+     "db": 25,
+     "real": 250
+    },
+    "mDef": {
+     "db": 5,
+     "real": 250
+    },
+    "acc": {
+     "db": 144,
+     "real": 120
+    },
+    "avoid": {
+     "db": 39,
+     "real": 15
+    },
+    "exp": {
+     "db": 300,
+     "real": 270
+    },
+    "weak": {
+     "db": "Ice",
+     "real": "-"
+    },
+    "immune": {
+     "db": "-",
+     "real": "Poison"
+    },
+    "strong": {
+     "db": "Lightning",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "53",
+   "name": "Taurospear",
+   "wzId": "7130101",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 12535,
+     "real": 18000
+    },
+    "mp": {
+     "db": 150,
+     "real": 220
+    },
+    "wAtk": {
+     "db": 410,
+     "real": 300
+    },
+    "mAtk": {
+     "db": 410,
+     "real": 390
+    },
+    "wDef": {
+     "db": 5,
+     "real": 550
+    },
+    "mDef": {
+     "db": 25,
+     "real": 400
+    },
+    "acc": {
+     "db": 147,
+     "real": 130
+    },
+    "avoid": {
+     "db": 47,
+     "real": 30
+    },
+    "weak": {
+     "db": "Ice",
+     "real": "-"
+    },
+    "immune": {
+     "db": "-",
+     "real": "Poison"
+    },
+    "strong": {
+     "db": "Lightning",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1080",
+   "name": "Werewolf",
+   "wzId": "7130200",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 15042,
+     "real": 16000
+    },
+    "mp": {
+     "db": 50,
+     "real": 150
+    },
+    "wAtk": {
+     "db": 374,
+     "real": 330
+    },
+    "mAtk": {
+     "db": 410,
+     "real": 380
+    },
+    "wDef": {
+     "db": 15,
+     "real": 800
+    },
+    "mDef": {
+     "db": 15,
+     "real": 290
+    },
+    "acc": {
+     "db": 147,
+     "real": 160
+    },
+    "avoid": {
+     "db": 42,
+     "real": 25
+    }
+   }
+  },
+  {
+   "catalogId": "700001",
+   "name": "Jr. Balrog",
+   "wzId": "8130100",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 325400,
+     "real": 50000
+    },
+    "wAtk": {
+     "db": 972,
+     "real": 450
+    },
+    "mAtk": {
+     "db": 1069,
+     "real": 605
+    },
+    "wDef": {
+     "db": 15,
+     "real": 420
+    },
+    "mDef": {
+     "db": 15,
+     "real": 450
+    },
+    "acc": {
+     "db": 163,
+     "real": 150
+    },
+    "avoid": {
+     "db": 43,
+     "real": 30
+    },
+    "exp": {
+     "db": 1612,
+     "real": 2000
+    }
+   }
+  },
+  {
+   "catalogId": "700005",
+   "name": "Crimson Balrog",
+   "wzId": "8150000",
+   "levelDiff": 0,
+   "undead": false,
+   "diffs": {
+    "hp": {
+     "db": 741240,
+     "real": 100000
+    },
+    "mp": {
+     "db": 700,
+     "real": 500
+    },
+    "wAtk": {
+     "db": 1192,
+     "real": 500
+    },
+    "mAtk": {
+     "db": 1356,
+     "real": 720
+    },
+    "wDef": {
+     "db": 15,
+     "real": 800
+    },
+    "mDef": {
+     "db": 15,
+     "real": 800
+    },
+    "acc": {
+     "db": 174,
+     "real": 180
+    },
+    "avoid": {
+     "db": 52,
+     "real": 40
+    },
+    "exp": {
+     "db": 2652,
+     "real": 3500
+    },
+    "strong": {
+     "db": "Dark",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1025",
+   "name": "Chronos",
+   "wzId": "3230306",
+   "levelDiff": 0,
+   "undead": true,
+   "diffs": {
+    "hp": {
+     "db": 1336,
+     "real": 1750
+    },
+    "mp": {
+     "db": 70,
+     "real": 30
+    },
+    "wAtk": {
+     "db": 203,
+     "real": 117
+    },
+    "wDef": {
+     "db": 5,
+     "real": 90
+    },
+    "mDef": {
+     "db": 25,
+     "real": 120
+    },
+    "acc": {
+     "db": 127,
+     "real": 135
+    },
+    "avoid": {
+     "db": 26,
+     "real": 20
+    }
+   }
+  },
+  {
+   "catalogId": "1034",
+   "name": "Platoon Chronos",
+   "wzId": "4230114",
+   "levelDiff": 0,
+   "undead": true,
+   "diffs": {
+    "hp": {
+     "db": 1774,
+     "real": 2050
+    },
+    "mp": {
+     "db": 80,
+     "real": 50
+    },
+    "wAtk": {
+     "db": 221,
+     "real": 125
+    },
+    "mAtk": {
+     "db": 242,
+     "real": 142
+    },
+    "wDef": {
+     "db": 5,
+     "real": 130
+    },
+    "mDef": {
+     "db": 25,
+     "real": 160
+    },
+    "acc": {
+     "db": 133,
+     "real": 145
+    },
+    "avoid": {
+     "db": 28,
+     "real": 22
+    }
+   }
+  },
+  {
+   "catalogId": "1047",
+   "name": "Master Chronos",
+   "wzId": "4230115",
+   "levelDiff": 3,
+   "undead": true,
+   "diffs": {
+    "level": {
+     "db": 49,
+     "real": 46
+    },
+    "hp": {
+     "db": 2416,
+     "real": 2600
+    },
+    "mp": {
+     "db": 80,
+     "real": 70
+    },
+    "wAtk": {
+     "db": 257,
+     "real": 130
+    },
+    "mAtk": {
+     "db": 282,
+     "real": 160
+    },
+    "wDef": {
+     "db": 5,
+     "real": 170
+    },
+    "mDef": {
+     "db": 25,
+     "real": 200
+    },
+    "acc": {
+     "db": 140,
+     "real": 155
+    },
+    "avoid": {
+     "db": 32,
+     "real": 24
+    },
+    "exp": {
+     "db": 137,
+     "real": 115
+    }
+   }
+  },
+  {
+   "catalogId": "1065",
+   "name": "Soul Teddy",
+   "wzId": "6230400",
+   "levelDiff": 0,
+   "undead": true,
+   "diffs": {
+    "hp": {
+     "db": 5976,
+     "real": 7600
+    },
+    "mp": {
+     "db": 50,
+     "real": 100
+    },
+    "wAtk": {
+     "db": 351,
+     "real": 190
+    },
+    "mAtk": {
+     "db": 351,
+     "real": 220
+    },
+    "wDef": {
+     "db": 10,
+     "real": 190
+    },
+    "mDef": {
+     "db": 20,
+     "real": 215
+    },
+    "acc": {
+     "db": 139,
+     "real": 140
+    },
+    "avoid": {
+     "db": 36,
+     "real": 25
+    },
+    "exp": {
+     "db": 237,
+     "real": 245
+    },
+    "strong": {
+     "db": "Ice/Lightning",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1072",
+   "name": "Master Soul Teddy",
+   "wzId": "6230500",
+   "levelDiff": 0,
+   "undead": true,
+   "diffs": {
+    "hp": {
+     "db": 8210,
+     "real": 11000
+    },
+    "mp": {
+     "db": 50,
+     "real": 100
+    },
+    "wAtk": {
+     "db": 366,
+     "real": 210
+    },
+    "mAtk": {
+     "db": 371,
+     "real": 220
+    },
+    "wDef": {
+     "db": 10,
+     "real": 210
+    },
+    "mDef": {
+     "db": 20,
+     "real": 250
+    },
+    "acc": {
+     "db": 142,
+     "real": 140
+    },
+    "avoid": {
+     "db": 37,
+     "real": 27
+    },
+    "exp": {
+     "db": 272,
+     "real": 265
+    },
+    "immune": {
+     "db": "-",
+     "real": "Ice"
+    },
+    "strong": {
+     "db": "Ice/Lightning",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  },
+  {
+   "catalogId": "1076",
+   "name": "Klock",
+   "wzId": "8140200",
+   "levelDiff": 1,
+   "undead": true,
+   "diffs": {
+    "level": {
+     "db": 71,
+     "real": 70
+    },
+    "hp": {
+     "db": 9817,
+     "real": 15000
+    },
+    "mp": {
+     "db": 75,
+     "real": 180
+    },
+    "wAtk": {
+     "db": 391,
+     "real": 250
+    },
+    "mAtk": {
+     "db": 391,
+     "real": 320
+    },
+    "wDef": {
+     "db": 20,
+     "real": 250
+    },
+    "mDef": {
+     "db": 10,
+     "real": 250
+    },
+    "acc": {
+     "db": 145,
+     "real": 130
+    },
+    "avoid": {
+     "db": 39,
+     "real": 26
+    },
+    "exp": {
+     "db": 309,
+     "real": 270
+    },
+    "weak": {
+     "db": "Holy/Fire",
+     "real": "Holy"
+    }
+   }
+  },
+  {
+   "catalogId": "1081",
+   "name": "Dark Klock",
+   "wzId": "8140300",
+   "levelDiff": 0,
+   "undead": true,
+   "diffs": {
+    "hp": {
+     "db": 13101,
+     "real": 18000
+    },
+    "mp": {
+     "db": 75,
+     "real": 200
+    },
+    "wAtk": {
+     "db": 415,
+     "real": 300
+    },
+    "mAtk": {
+     "db": 415,
+     "real": 350
+    },
+    "wDef": {
+     "db": 20,
+     "real": 380
+    },
+    "mDef": {
+     "db": 10,
+     "real": 400
+    },
+    "acc": {
+     "db": 147,
+     "real": 140
+    },
+    "avoid": {
+     "db": 42,
+     "real": 27
+    },
+    "exp": {
+     "db": 360,
+     "real": 370
+    }
+   }
+  },
+  {
+   "catalogId": "1087",
+   "name": "Death Teddy",
+   "wzId": "7130010",
+   "levelDiff": 0,
+   "undead": true,
+   "diffs": {
+    "hp": {
+     "db": 20556,
+     "real": 32000
+    },
+    "mp": {
+     "db": 150,
+     "real": 180
+    },
+    "wAtk": {
+     "db": 376,
+     "real": 375
+    },
+    "mAtk": {
+     "db": 460,
+     "real": 430
+    },
+    "wDef": {
+     "db": 5,
+     "real": 700
+    },
+    "mDef": {
+     "db": 25,
+     "real": 465
+    },
+    "acc": {
+     "db": 152,
+     "real": 160
+    },
+    "avoid": {
+     "db": 46,
+     "real": 27
+    },
+    "exp": {
+     "db": 462,
+     "real": 1300
+    },
+    "weak": {
+     "db": "Holy/Fire",
+     "real": "Holy"
+    }
+   }
+  },
+  {
+   "catalogId": "1089",
+   "name": "Master Death Teddy",
+   "wzId": "7130300",
+   "levelDiff": 0,
+   "undead": true,
+   "diffs": {
+    "hp": {
+     "db": 23494,
+     "real": 40000
+    },
+    "mp": {
+     "db": 150,
+     "real": 190
+    },
+    "wAtk": {
+     "db": 392,
+     "real": 400
+    },
+    "mAtk": {
+     "db": 480,
+     "real": 450
+    },
+    "wDef": {
+     "db": 5,
+     "real": 750
+    },
+    "mDef": {
+     "db": 25,
+     "real": 480
+    },
+    "acc": {
+     "db": 154,
+     "real": 180
+    },
+    "avoid": {
+     "db": 48,
+     "real": 28
+    },
+    "exp": {
+     "db": 511,
+     "real": 1720
+    },
+    "strong": {
+     "db": "Ice/Lightning",
+     "real": "(no partial-resist tier exists pre-BB; not in elemAttr)"
+    }
+   }
+  }
+ ],
+ "unresolved": [
+  "Ligator",
+  "Jr. Necki (Strong)",
+  "Iron Hog",
+  "King Slime",
+  "Glowshroom",
+  "Raffle",
+  "Golden Stirge",
+  "Aqumander",
+  "Echopus",
+  "Rafflesia",
+  "Duskmander",
+  "Zombie Mushmom",
+  "Myewood",
+  "Rotten Mushroom",
+  "Minor Zombie",
+  "Sporewood",
+  "Rotten Mushmom"
+ ]
+}
