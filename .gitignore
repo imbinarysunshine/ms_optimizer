@@ -2,3 +2,6 @@ node_modules/
 dist/
 .DS_Store
 *.log
+tools/rope_analysis.json
+tools/.wz_cache/
+maplestory_source_wz_extracts.zip
