@@ -4,4 +4,5 @@ dist/
 *.log
 tools/rope_analysis.json
 tools/.wz_cache/
+tools/.spotcheck_cache/
 maplestory_source_wz_extracts.zip

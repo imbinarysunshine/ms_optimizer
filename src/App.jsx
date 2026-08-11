@@ -37,36 +37,36 @@ function hitsToKill(hp, mdef, dmgMin) {
   return Math.ceil(eh / dmgMin);
 }
 
-function effRatio(hp, mdef, exp) {
-  return (hp + mdef) / (exp * EXP_MULTI);
-}
-
 // -- Heal skill formula (v62 pre-BB, source: Ayumilove/Southperry formula compilation) --
-// Heal Lv N: MP cost = 29 + N, Skill% = N * 15%, hits up to 6 undead per cast
-// MIN = (INT*0.3 + LUK) * Magic/1000 * targetMult * skillPct
-// MAX = (INT*1.2 + LUK) * Magic/1000 * targetMult * skillPct
-// targetMult = 1.5 + 5/numTargets (1 target=6.5, 2=4.0, 3=3.167, 4=2.75, 5=2.5, 6=2.333)
-function healDmg(healLvl, numTargets, int_, luk, weaponMatk) {
+// Heal Lv N: MP cost = 29 + N, Skill% = N * 15%
+// MIN = (INT*0.3 + LUK) * Magic/1000 * HEAL_TARGET_MULT * skillPct
+// MAX = (INT*1.2 + LUK) * Magic/1000 * HEAL_TARGET_MULT * skillPct
+//
+// HEAL_TARGET_MULT is STRICTLY the Heal HP-recovery formula's own multiplier --
+// it scales with the number of PARTY MEMBERS being healed, including the caster
+// ("1.5 + 5/partySize": 1=6.5, 2=4.0, 3=3.167, 4=2.75, 5=2.5, 6=2.333), and has
+// nothing to do with how many undead monsters get damaged. This app has no party
+// mechanics -- it's a solo-training calculator -- so partySize is always 1,
+// giving a fixed 6.5x. Per-target Heal damage does NOT drop as you hit more
+// undead; the "Undead Hit / Cast" slider below only affects kill throughput
+// (exp/kills per cast, MP Eater proc rolls), never this multiplier.
+const HEAL_TARGET_MULT = 1.5 + 5 / 1;
+function healDmg(healLvl, int_, luk, weaponMatk) {
   if (healLvl === 0) return { min: 0, max: 0, mpCost: 0 };
   const magic = int_ + weaponMatk;
   const skillPct = (healLvl * 15) / 100;
-  const targetMult = 1.5 + 5 / numTargets;
   const mpCost = 29 + healLvl;
-  const min = (int_ * 0.3 + luk) * magic / 1000 * targetMult * skillPct;
-  const max = (int_ * 1.2 + luk) * magic / 1000 * targetMult * skillPct;
+  const min = (int_ * 0.3 + luk) * magic / 1000 * HEAL_TARGET_MULT * skillPct;
+  const max = (int_ * 1.2 + luk) * magic / 1000 * HEAL_TARGET_MULT * skillPct;
   return { min, max, mpCost };
 }
 
-function healCastsToKill(hp, mdef, healLvl, numTargets, int_, luk, weaponMatk) {
+function healCastsToKill(hp, mdef, healLvl, int_, luk, weaponMatk) {
   if (healLvl === 0) return null;
   const eh = hp + mdef;
-  const { min } = healDmg(healLvl, numTargets, int_, luk, weaponMatk);
+  const { min } = healDmg(healLvl, int_, luk, weaponMatk);
   if (min <= 0) return null;
   return Math.ceil(eh / min);
-}
-
-function healEffRatio(hp, mdef, exp, numTargets) {
-  return (hp + mdef) / (exp * EXP_MULTI * Math.min(numTargets, 6));
 }
 
 function oneshotLevel(hp, mdef, baseChar) {
@@ -273,6 +273,27 @@ function spawnMapsFor(monsterId) {
   return null;
 }
 const layoutIcon = l => l === "flat" ? "[=]" : l === "tiered" ? "[~]" : l === "vertical" ? "[|]" : "[?]";
+// Mirrors the ROPE-HEAVY / LOW SPAWN badge conditions in the spawn-map list below --
+// used by the "Hide Rope-Heavy Maps" / "Hide Low-Spawn Maps" filter chips.
+function isRopeHeavyMap(mapId) {
+  const s = MAP_SCORES[mapId];
+  return !!(s && s.ropeCount > 0 && s.mcScoreRaw > s.mcScore + (s.lowSpawnPenalty || 0));
+}
+function isLowSpawnMap(mapId) {
+  const s = MAP_SCORES[mapId];
+  return !!(s && s.lowSpawnPenalty > 0);
+}
+// reachable is a portal-graph BFS result from every town map (tools/extract_portals.mjs).
+// Caveat: it only follows walkable portal edges -- content entered via an NPC dialogue
+// warp (most Party Quests, some event/minigame instances) has no portal edge at all and
+// will show as unreachable even though it's real, accessible content. Spot-checked: 750/850
+// "Hidden Street" maps came back reachable, and the 100 that didn't are legitimately
+// NPC/event-triggered (e.g. "1st Accompaniment", "The Other Dimension"), not normal areas --
+// but treat this as a strong signal, not certainty.
+function isUnreachableMap(mapId) {
+  const s = MAP_SCORES[mapId];
+  return !!(s && s.reachable === false);
+}
 const CATALOG_TO_WZID = {"2":"100100","3":"100101","4":"120100","5":"130101","6":"130100","7":"210100","8":"1210100","9":"1210102","10":"1210101","11":"1110101","12":"1120100","13":"1110100","14":"1210103","15":"1130100","16":"2220100","17":"2300100","700004":"9300184","18":"2130103","19":"2110200","20":"2130100","21":"2230101","22":"2230102","1000":"2230103","1001":"5200000","23":"2230100","1002":"2230104","25":"3000001","26":"3000002","27":"3000003","28":"3000004","1003":"3000000","1004":"5200001","1005":"5200002","29":"3110100","30":"3210100","1011":"5300000","31":"3230100","1012":"3210200","1013":"3210201","1014":"3210202","1015":"5300001","32":"3230101","33":"3230300","34":"3230301","1019":"3230200","1021":"5400000","35":"3210800","36":"3230102","37":"4230100","700000":"9500326","38":"4230101","1032":"4230107","1036":"4230105","1039":"4230108","40":"4130100","1042":"4230106","41":"4130101","43":"4230102","44":"4230104","45":"5130100","1048":"5100000","46":"5130103","1052":"5120001","1053":"5120002","1054":"5120003","47":"5300100","1055":"5130104","48":"5130101","1056":"5130105","1058":"5130107","49":"5130102","1060":"5140000","50":"6130100","51":"6230100","52":"7130100","53":"7130101","1080":"7130200","700001":"8130100","700005":"8150000","1025":"3230306","1034":"4230114","1047":"4230115","1065":"6230400","1072":"6230500","1076":"8140200","1081":"8140300","1087":"7130010","1089":"7130300"};
 // Mob sprites: try local first (extracted stand/0.png, flattened via Flatten-MobThumbnails.ps1),
 // falling back to legends.ml for monsters we've resolved to a real WZ id but don't have a
@@ -350,9 +371,26 @@ const MONSTER_MAPS = {
   700003:[{name:"Sleepywood: Boss Zone", mapId:105090900, count:1}],
   800003:[{name:"Kerning Subway: Line 1 Final Stop", mapId:103000200, count:1}],
 };
-const effColor = r => r < 4 ? "#22c55e" : r < 5 ? "#84cc16" : r < 6 ? "#eab308" : "#ef4444";
-const badge = (label, val, color) => (
-  <span style={{ background:color, color:"#fff", borderRadius:4, padding:"1px 7px", fontSize:11, fontWeight:700, marginRight:4 }}>
+// Tier is percentile-based (see effTier computation) not a fixed number -- "high" is
+// literally "top third of what's currently visible", so it stays meaningful across levels.
+const effTierColor = tier => tier === "high" ? "#22c55e" : tier === "mid" ? "#eab308" : "#ef4444";
+function formatExpPerHour(v) {
+  if (v == null) return "--";
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + "M";
+  if (v >= 1000) return (v / 1000).toFixed(1) + "K";
+  return Math.round(v).toString();
+}
+// Picks black/white text for a #rrggbb background by relative luminance (WCAG-style),
+// so badge colors can stay bright/varied without hand-tuning text color per badge --
+// bright backgrounds (yellow, emerald, sky blue) get black text, dark ones get white.
+function contrastText(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? "#000" : "#fff";
+}
+const badge = (label, val, color, textColor = contrastText(color)) => (
+  <span style={{ background:color, color:textColor, borderRadius:4, padding:"1px 7px", fontSize:11, fontWeight:700, marginRight:4 }}>
     {label}: {val}
   </span>
 );
@@ -503,13 +541,14 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                   <span style={{ fontSize:14, fontWeight:700, color:"#e2e8f0" }}>{m.name}</span>
                   {m.boss && <span style={{ marginLeft:8, background:"#7f1d1d", color:"#fca5a5", fontSize:10, padding:"1px 6px", borderRadius:3, fontWeight:700 }}>BOSS</span>}
                   {m.undead && <span style={{ marginLeft:6, background:"#14532d", color:"#86efac", fontSize:10, padding:"1px 6px", borderRadius:3, fontWeight:700 }}>+ UNDEAD</span>}
-                  {STAT_VERIFIED_IDS.has(m.id) && <span style={{ marginLeft:6, background:"#1e3a5f", color:"#7dd3fc", fontSize:10, padding:"1px 6px", borderRadius:3, fontWeight:700 }} title="HP/EXP/ATK/DEF individually spot-checked against MapleLegends' real values via legends.ml + Cosmic v83 crosswalk">[OK] STATS VERIFIED</span>}
-                  {m.auto && <span style={{ marginLeft:6, background:"#3f2d0d", color:"#fbbf24", fontSize:10, padding:"1px 6px", borderRadius:3, fontWeight:700 }} title="Sourced directly from the Cosmic v83 dump (same source spot-checked accurate for the STATS VERIFIED set), but this specific entry was not individually cross-checked against legends.ml">NORMAL</span>}
+                  {STAT_VERIFIED_IDS.has(m.id) && <span style={{ marginLeft:6, background:"#1e3a5f", color:"#7dd3fc", fontSize:10, padding:"1px 6px", borderRadius:3, fontWeight:700 }} title={m.auto ? "Cosmic v83 dump entry -- verified via a diverse spot-check against legends.ml (48 monsters checked across the full level range, 9 with a systematic error corrected) plus the same-source guarantee already confirmed for the individually-checked set, not an individual re-check of this specific monster" : "HP/EXP/ATK/DEF individually spot-checked against MapleLegends' real values via legends.ml + Cosmic v83 crosswalk"}>[OK] STATS VERIFIED</span>}
+                  {m.auto && !STAT_VERIFIED_IDS.has(m.id) && <span style={{ marginLeft:6, background:"#3f2d0d", color:"#fbbf24", fontSize:10, padding:"1px 6px", borderRadius:3, fontWeight:700 }} title="Sourced from the Cosmic v83 dump but NOT verified -- this specific entry failed or couldn't complete a legends.ml cross-check (see monsterDb.js's header comment) and may have wrong stats">NORMAL</span>}
                   <div style={{ fontSize:11, color:"#6b7280" }}>Lv{m.level} x {m.location}</div>
                 </div>
-                <div style={{ textAlign:"right", flexShrink:0 }}>
-                  <span style={{ fontSize:20, fontWeight:700, color:effColor(m.ratio) }}>{m.ratio.toFixed(2)}</span>
-                  <div style={{ fontSize:9, color:"#4b5563" }}>EFF RATIO</div>
+                <div style={{ textAlign:"right", flexShrink:0 }}
+                  title="Exp per hour of continuous casting at your current stats/level -- top/middle/bottom third of what's currently shown, not a fixed number">
+                  <span style={{ fontSize:20, fontWeight:700, color:effTierColor(m.effTier) }}>{formatExpPerHour(m.primaryExpPerHour)}</span>
+                  <div style={{ fontSize:9, color:"#4b5563" }}>EXP/HR{m.undead && healLvl > 0 ? " (HEAL)" : ""}</div>
                 </div>
               </div>
 
@@ -562,9 +601,9 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                       <span style={{color:"#60a5fa"}}> (net ~{m.healNetMp?.toFixed(1)} w/MPE, {(m.healAnyProc*100).toFixed(0)}% proc chance)</span>
                     )}
                   </span>
-                  <span><span style={{color:"#6b7280"}}>EFF RATIO (x{healTargets} targets): </span>
-                    <span style={{color:effColor(m.healRatio ?? 99)}}>{m.healRatio?.toFixed(2)}</span>
-                    {m.healRatio && m.healRatio < m.ratio && <span style={{color:"#86efac"}}> ^ better than Magic Claw</span>}
+                  <span><span style={{color:"#6b7280"}}>EXP/HR ({healTargets} undead/cast): </span>
+                    <span style={{color: m.healExpPerHour > m.expPerHour ? "#22c55e" : "#9ca3af", fontWeight:700}}>{formatExpPerHour(m.healExpPerHour)}</span>
+                    {m.healExpPerHour > m.expPerHour && <span style={{color:"#86efac"}}> ^ better than Magic Claw</span>}
                   </span>
                 </div>
               )}
@@ -670,17 +709,18 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                           {name}
                         </div>
                         {/* Auto-computed MC/Heal training scores, from Map.wz foothold geometry (see MAP_SCORES).
-                            mcScore/healScore already fold in the rope/ladder travel penalty below --
-                            mcScoreRaw/healScoreRaw are the pre-penalty geometry-only scores. */}
+                            mcScore/healScore already fold in the rope/ladder travel penalty and the
+                            low-spawn-supply penalty below -- mcScoreRaw/healScoreRaw are the pre-penalty
+                            geometry-only scores. */}
                         {MAP_SCORES[mapId] && (
                           <div style={{ display:"flex", gap:0 }}>
                             <div style={{ background:scoreColor(MAP_SCORES[mapId].mcScore), color:"#000", fontSize:8, fontWeight:700, padding:"1px 5px", flex:1, textAlign:"center" }}
-                              title={MAP_SCORES[mapId].mcScoreRaw > MAP_SCORES[mapId].mcScore ? `${MAP_SCORES[mapId].mcScoreRaw}/5 before rope/ladder travel penalty` : undefined}>
+                              title={MAP_SCORES[mapId].mcScoreRaw > MAP_SCORES[mapId].mcScore ? `${MAP_SCORES[mapId].mcScoreRaw}/5 before rope/ladder travel and low-spawn penalties` : undefined}>
                               MC {MAP_SCORES[mapId].mcScore}/5
                             </div>
                             {m.undead && (
                               <div style={{ background:scoreColor(MAP_SCORES[mapId].healScore), color:"#000", fontSize:8, fontWeight:700, padding:"1px 5px", flex:1, textAlign:"center" }}
-                                title={MAP_SCORES[mapId].healScoreRaw > MAP_SCORES[mapId].healScore ? `${MAP_SCORES[mapId].healScoreRaw}/5 before rope/ladder travel penalty` : undefined}>
+                                title={MAP_SCORES[mapId].healScoreRaw > MAP_SCORES[mapId].healScore ? `${MAP_SCORES[mapId].healScoreRaw}/5 before rope/ladder travel and low-spawn penalties` : undefined}>
                                 HL {MAP_SCORES[mapId].healScore}/5
                               </div>
                             )}
@@ -689,10 +729,29 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                         {/* Rope-heavy warning: flagged when the score above was actually docked for
                             forced rope/ladder travel between mob-bearing floors (see ropeCoverageRatio
                             in MAP_SCORES, tools/extract_rope_data.mjs) -- e.g. Dungeon: Damp Tree-Forest. */}
-                        {MAP_SCORES[mapId] && MAP_SCORES[mapId].mcScoreRaw > MAP_SCORES[mapId].mcScore && (
+                        {MAP_SCORES[mapId] && MAP_SCORES[mapId].ropeCount > 0 && MAP_SCORES[mapId].mcScoreRaw > MAP_SCORES[mapId].mcScore + (MAP_SCORES[mapId].lowSpawnPenalty || 0) && (
                           <div style={{ background:"#3a2412", color:"#f59e0b", fontSize:8, fontWeight:700, padding:"1px 4px", textAlign:"center", letterSpacing:0.5 }}
                             title={`${MAP_SCORES[mapId].ropeCount} rope/ladder segments cover ${Math.round(MAP_SCORES[mapId].ropeCoverageRatio*100)}% of this map's vertical span -- slow to traverse between farming floors`}>
                             [~] ROPE-HEAVY
+                          </div>
+                        )}
+                        {/* Low-spawn warning: this map's total mob population (mobCount) is small enough
+                            that a farming session is likely to clear it faster than monsters respawn,
+                            leading to idle downtime -- see tools/apply_spawn_penalty.mjs. */}
+                        {MAP_SCORES[mapId] && MAP_SCORES[mapId].lowSpawnPenalty > 0 && (
+                          <div style={{ background:"#3a1212", color:"#f87171", fontSize:8, fontWeight:700, padding:"1px 4px", textAlign:"center", letterSpacing:0.5 }}
+                            title={`Only ${MAP_SCORES[mapId].mobCount} monster${MAP_SCORES[mapId].mobCount===1?"":"s"} spawn on this map at once -- likely to be cleared faster than it respawns, leaving you idle`}>
+                            [!] LOW SPAWN
+                          </div>
+                        )}
+                        {/* No-portal-path warning: BFS over the real portal graph from every town
+                            found no walkable path into this map -- see tools/extract_portals.mjs.
+                            Caveat: NPC-dialogue warps (most Party Quests) aren't portals, so this
+                            can false-positive on real, reachable content. */}
+                        {isUnreachableMap(mapId) && (
+                          <div style={{ background:"#241a3a", color:"#c4b5fd", fontSize:8, fontWeight:700, padding:"1px 4px", textAlign:"center", letterSpacing:0.5 }}
+                            title="No walkable portal path found from any town to this map. It may only be reachable via an NPC dialogue warp (common for Party Quests) rather than a physical portal -- treat this as a strong signal, not certainty.">
+                            [?] NO PORTAL PATH
                           </div>
                         )}
                         {/* Platform notes on hover via title - also show layout inline */}
@@ -734,7 +793,12 @@ export default function App() {
   const [bossOnly, setBossOnly] = useState(false);
   const [undeadOnly, setUndeadOnly] = useState(false);
   const [autoOnly, setAutoOnly] = useState(false);
-  const [hideUnknownLoc, setHideUnknownLoc] = useState(false); // hides m.location === "Location unknown" -- mostly event/unused mobs, pure noise
+  const [hideUnknownLoc, setHideUnknownLoc] = useState(true); // hides m.location === "Location unknown" -- mostly event/unused mobs, pure noise
+  const [hideRopeHeavy, setHideRopeHeavy] = useState(false); // hides monsters whose EVERY known spawn map is rope/ladder-heavy
+  const [hideLowSpawn, setHideLowSpawn] = useState(false); // hides monsters whose EVERY known spawn map has low total mob supply
+  const [hideUnreachable, setHideUnreachable] = useState(false); // hides monsters whose EVERY known spawn map has no portal-graph path from a town
+  const [minMcMapScore, setMinMcMapScore] = useState(0); // 0 = off; else hides monsters whose EVERY spawn map's mcScore is below this
+  const [minHealMapScore, setMinHealMapScore] = useState(0); // 0 = off; same but healScore, only meaningful for undead monsters
   const [weakFilter, setWeakFilter] = useState(null); // e.g. "Fire", "Holy", "Lightning" -- exact match on m.weak
   const [effFilter, setEffFilter] = useState(null); // "low" | "mid" | "high" -- bucketed on m.ratio, matches effColor thresholds
   const [castsFilter, setCastsFilter] = useState(null); // [lo,hi] -- bucketed on m.hits (Magic Claw casts to kill)
@@ -768,9 +832,16 @@ export default function App() {
     });
     list = list.map(m => {
       const isUndead = UNDEAD_IDS.has(m.id);
-      const hRatio = isUndead ? healEffRatio(m.hp, m.mDef, m.exp, healTargets) : null;
-      const hCasts = isUndead ? healCastsToKill(m.hp, m.mDef, healLvl, healTargets, CHAR.int, CHAR.luk, CHAR.weaponMatk) : null;
-      const hDmg = isUndead ? healDmg(healLvl, healTargets, CHAR.int, CHAR.luk, CHAR.weaponMatk) : null;
+      // Magic Claw = 2 hits/cast, each hit rolled off calcDmg independently, so per-cast min damage is 2x a single hit's min
+      const hits = hitsToKill(m.hp, m.mDef, dmg.min * MC_HITS_PER_CAST);
+      const hCasts = isUndead ? healCastsToKill(m.hp, m.mDef, healLvl, CHAR.int, CHAR.luk, CHAR.weaponMatk) : null;
+      const hDmg = isUndead ? healDmg(healLvl, CHAR.int, CHAR.luk, CHAR.weaponMatk) : null;
+      // Efficiency ratio = actual casts needed to kill / total exp on offer -- lower is
+      // better (fewer casts per unit of exp). Deliberately NOT hp/exp: with MC/Heal both
+      // dealing far more damage than needed to kill a low-level mob, a tiny-hp/tiny-exp
+      // monster could look artificially "efficient" on a pure hp-based ratio even though
+      // a real, appropriately-leveled monster nets far more exp for the same 1 cast.
+      const hRatio = isUndead && hCasts != null ? hCasts / (m.exp * EXP_MULTI * Math.min(healTargets, 6)) : null;
       // MP Eater: Heal fires once per target hit, Magic Claw fires 2 hits
       const healMpReturn = hDmg ? mpEaterExpectedReturn(mpEaterLvl, m.mp, healTargets) : 0;
       const mcMpReturn = mpEaterExpectedReturn(mpEaterLvl, m.mp, 2);
@@ -778,9 +849,6 @@ export default function App() {
       const mcNetMp = netMpCost(20, mcMpReturn);
       const healAnyProc = mpEaterAnyProcChance(mpEaterLvl, healTargets);
       const mcAnyProc = mpEaterAnyProcChance(mpEaterLvl, 2);
-      // Compute hits early so it's available for session profit
-      // Magic Claw = 2 hits/cast, each hit rolled off calcDmg independently, so per-cast min damage is 2x a single hit's min
-      const hits = hitsToKill(m.hp, m.mDef, dmg.min * MC_HITS_PER_CAST);
       // Session profit
       const mcKillsPerCast = 1;
       const mobIncomePerKill = incomePerKillFor(m.id);
@@ -788,11 +856,25 @@ export default function App() {
       const healSession = isUndead && hDmg && healLvl > 0
         ? sessionProfit(sessionMins, "heal", healTargets / (hCasts || 1), healNetMp ?? 0, m.exp, CHAR.level, charExpPct, potionKey, CHAR.mpMax, mobIncomePerKill)
         : null;
+      const mcRatio = hits / (m.exp * EXP_MULTI);
+      // EXP/hr: the same casts-to-kill-per-exp math as *Ratio above, just inverted and
+      // scaled into an intuitive, higher-is-better unit for display -- "how much reward
+      // am I actually getting" is a much clearer question than an abstract ratio number.
+      const mcExpPerHour = (m.exp * EXP_MULTI / hits) * (3600 / MC_CAST_TIME_SEC);
+      const healExpPerHour = (isUndead && hCasts) ? (m.exp * EXP_MULTI * Math.min(healTargets, 6) / hCasts) * (3600 / HEAL_CAST_TIME_SEC) : null;
       return {
         ...m,
         undead: isUndead,
         effHP: m.hp + m.mDef,
-        ratio: effRatio(m.hp, m.mDef, m.exp),
+        ratio: mcRatio,
+        // Efficiency ratio/expPerHour used for sorting/filtering/the main badge: Magic
+        // Claw by default (it only ever hits one target per cast), switching to the
+        // Heal figures only for undead monsters when Heal is actually selected --
+        // that's the only case where a single cast can hit multiple targets.
+        primaryRatio: (isUndead && healLvl > 0 && hRatio != null) ? hRatio : mcRatio,
+        primaryExpPerHour: (isUndead && healLvl > 0 && healExpPerHour != null) ? healExpPerHour : mcExpPerHour,
+        expPerHour: mcExpPerHour,
+        healExpPerHour,
         hits,
         oneshotLvl: oneshotLevel(m.hp, m.mDef, CHAR),
         exp2x: m.exp * EXP_MULTI,
@@ -813,25 +895,55 @@ export default function App() {
         spawnMaps: spawnMapsFor(m.id),
       };
     });
-    // Second filter pass: efficiency/casts buckets need m.ratio/m.hits, which only
-    // exist after enrichment above.
+    // Efficiency tiers are percentile-based against the CURRENTLY visible list, not a
+    // fixed number -- exp/hour is entirely character-level-dependent (a level 20 and a
+    // level 60 character have completely different "good" absolute values against the
+    // same monster set), so a fixed cutoff would misclassify constantly as level/gear
+    // change. Top third of primaryExpPerHour = "high", middle third = "mid", rest = "low".
+    const sortedRatios = list.map(m => m.primaryRatio).sort((a, b) => a - b);
+    const effP33 = sortedRatios[Math.floor(sortedRatios.length / 3)];
+    const effP66 = sortedRatios[Math.floor(sortedRatios.length * 2 / 3)];
+    list = list.map(m => ({
+      ...m,
+      effTier: (effP33 === undefined) ? "mid" : m.primaryRatio <= effP33 ? "high" : m.primaryRatio <= effP66 ? "mid" : "low",
+    }));
+    // Second filter pass: efficiency/casts buckets need m.primaryRatio/m.hits, which
+    // only exist after enrichment above.
     if (effFilter) {
-      list = list.filter(m => {
-        if (effFilter === "high") return m.ratio < 4;
-        if (effFilter === "mid") return m.ratio >= 4 && m.ratio < 6;
-        if (effFilter === "low") return m.ratio >= 6;
-        return true;
-      });
+      list = list.filter(m => m.effTier === effFilter);
     }
     if (castsFilter) {
       list = list.filter(m => m.hits >= castsFilter[0] && m.hits <= castsFilter[1]);
     }
-    if (sortBy === "efficiency") list.sort((a,b) => sortDir*(a.ratio - b.ratio));
+    // Hide monsters with no viable spawn location: every known map is rope-heavy /
+    // low-spawn, not just some of them (a monster with even one decent map is fine).
+    // Monsters with no resolved spawn maps at all aren't touched by either filter.
+    if (hideRopeHeavy) {
+      list = list.filter(m => !m.spawnMaps || !m.spawnMaps.length || !m.spawnMaps.every(s => isRopeHeavyMap(s.mapId)));
+    }
+    if (hideLowSpawn) {
+      list = list.filter(m => !m.spawnMaps || !m.spawnMaps.length || !m.spawnMaps.every(s => isLowSpawnMap(s.mapId)));
+    }
+    if (hideUnreachable) {
+      list = list.filter(m => !m.spawnMaps || !m.spawnMaps.length || !m.spawnMaps.every(s => isUnreachableMap(s.mapId)));
+    }
+    // Map-quality score thresholds: hide a monster only if EVERY known spawn map's
+    // mcScore/healScore falls below the chosen minimum (1-5). Heal's threshold only
+    // applies to undead monsters -- healScore is meaningless for anything else.
+    if (minMcMapScore > 0) {
+      list = list.filter(m => !m.spawnMaps || !m.spawnMaps.length ||
+        !m.spawnMaps.every(s => MAP_SCORES[s.mapId] && MAP_SCORES[s.mapId].mcScore < minMcMapScore));
+    }
+    if (minHealMapScore > 0) {
+      list = list.filter(m => !m.undead || !m.spawnMaps || !m.spawnMaps.length ||
+        !m.spawnMaps.every(s => MAP_SCORES[s.mapId] && MAP_SCORES[s.mapId].healScore < minHealMapScore));
+    }
+    if (sortBy === "efficiency") list.sort((a,b) => sortDir*(a.primaryRatio - b.primaryRatio));
     else if (sortBy === "level") list.sort((a,b) => sortDir*(a.level - b.level));
     else if (sortBy === "exp") list.sort((a,b) => sortDir*(a.exp2x - b.exp2x));
     else if (sortBy === "hp") list.sort((a,b) => sortDir*(a.hp - b.hp));
     return list;
-  }, [query, levelMin, levelMax, bossOnly, undeadOnly, autoOnly, hideUnknownLoc, weakFilter, effFilter, castsFilter, sortBy, sortDir, healLvl, healTargets, mpEaterLvl, sessionMins, potionKey, CHAR, dmg]);
+  }, [query, levelMin, levelMax, bossOnly, undeadOnly, autoOnly, hideUnknownLoc, hideRopeHeavy, hideLowSpawn, hideUnreachable, minMcMapScore, minHealMapScore, weakFilter, effFilter, castsFilter, sortBy, sortDir, healLvl, healTargets, mpEaterLvl, sessionMins, potionKey, CHAR, dmg]);
 
   return (
     <div style={{ minHeight:"100vh", background:"#0d1117", fontFamily:"monospace", color:"#e2e8f0" }}>
@@ -842,17 +954,10 @@ export default function App() {
             <span style={{ fontSize:24 }}>[Shroom]</span>
             <div>
               <div style={{ fontSize:18, fontWeight:700, color:"#a78bfa", letterSpacing:1 }}>MAPLESTORY MONSTER DB</div>
-              <div style={{ fontSize:10, color:"#6b7280", letterSpacing:2 }}>LEGENDS.ML x MEOWDB x V62 PRE-BIG BANG x STARRYDREAM LV.{CHAR.level} x {MONSTER_DB.length} MONSTERS</div>
+              <div style={{ fontSize:10, color:"#6b7280", letterSpacing:2 }}>
+                {MONSTER_DB.length} MONSTERS x {STAT_VERIFIED_IDS.size}/{MONSTER_DB.length} STAT-VERIFIED x {Object.keys(MAP_SCORES).length} MAPS SCORED x {Object.keys(REAL_SPAWNS).length} MAP.WZ-VERIFIED SPAWNS
+              </div>
             </div>
-          </div>
-          <div style={{ display:"flex", gap:6, flexWrap:"wrap", padding:"6px 10px", background:"#161b22", borderRadius:6, border:"1px solid #21262d", fontSize:11 }}>
-            <span style={{ color:"#6b7280" }}>STARRYDREAM:</span>
-            {badge("INT", CHAR.int, "#6366f1")}
-            {badge("M.ATT", CHAR.weaponMatk, "#8b5cf6")}
-            {badge("MIN/HIT", dmg.min.toFixed(0), "#059669")}
-            {badge("MAX/HIT", dmg.max.toFixed(0), "#10b981")}
-            {badge("MP", CHAR.mpMax, "#0ea5e9")}
-            <span style={{ color:"#4b5563" }}>+4 INT +1 LUK/lvl x Magic Claw Lv20 x2 hits/cast x 2x EXP</span>
           </div>
         </div>
       </div>
@@ -862,9 +967,16 @@ export default function App() {
         {/* Character Panel */}
         <div style={{ marginBottom:12, border:"1px solid #30363d", borderRadius:8, overflow:"hidden" }}>
           <button onClick={()=>setCharPanelOpen(o=>!o)}
-            style={{ width:"100%", background:"#161b22", border:"none", padding:"10px 14px", color:"#e2e8f0", fontFamily:"monospace", fontSize:12, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", textAlign:"left" }}>
+            style={{ width:"100%", background:"#161b22", border:"none", padding:"10px 14px", color:"#e2e8f0", fontFamily:"monospace", fontSize:12, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8, textAlign:"left" }}>
             <span style={{ fontWeight:700, letterSpacing:1, color:"#a78bfa" }}>CHARACTER Lv{CHAR.level} {charPanelOpen ? "[close]" : "[edit]"}</span>
-            <span style={{ color:"#6b7280", fontSize:11 }}>INT {CHAR.int} / LUK {CHAR.luk} / M.ATT {CHAR.weaponMatk} / {charExpPct.toFixed(2)}% exp / MIN {dmg.min.toFixed(0)}/hit MAX {dmg.max.toFixed(0)}/hit</span>
+            <span style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+              {badge("INT", CHAR.int, "#6366f1")}
+              {badge("M.ATT", CHAR.weaponMatk, "#8b5cf6")}
+              {badge("MIN/HIT", dmg.min.toFixed(0), "#14532d", "#86efac")}
+              {badge("MAX/HIT", dmg.max.toFixed(0), "#14532d", "#4ade80")}
+              {badge("MP", CHAR.mpMax, "#0369a1")}
+              {badge("EXP", `${charExpPct.toFixed(2)}%`, "#facc15")}
+            </span>
           </button>
           {charPanelOpen && (
             <div style={{ background:"#0d1117", padding:"12px 14px", display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"10px 16px" }}>
@@ -931,11 +1043,10 @@ export default function App() {
             <span style={{ color:"#86efac", fontWeight:700, minWidth:20 }}>{healLvl}</span>
             <span style={{ color:"#4b5563", fontSize:11 }}>({healLvl===0?"disabled":`${healLvl*15}% x ${29+healLvl} MP`})</span>
           </FilterRow>
-          <FilterRow label="Targets">
+          <FilterRow label="Undead Hit / Cast" hint='How many undead a single Heal cast kills -- affects kill throughput (exp/kills per cast, MP Eater proc rolls) only. Per-target Heal damage itself is fixed at a 6.5x multiplier (solo play, no party) -- see the "Heal dmg vs undead" line below.'>
             <input type="range" min={1} max={6} value={healTargets} onChange={e=>setHealTargets(+e.target.value)}
               style={{ width:80, accentColor:"#86efac" }} />
             <span style={{ color:"#86efac", fontWeight:700 }}>{healTargets}</span>
-            <span style={{ color:"#4b5563", fontSize:11 }}>(mult x{(1.5 + 5/healTargets).toFixed(2)})</span>
           </FilterRow>
           <FilterRow label="MP Eater Lv">
             <input type="range" min={0} max={20} value={mpEaterLvl} onChange={e=>setMpEaterLvl(+e.target.value)}
@@ -960,7 +1071,7 @@ export default function App() {
           </FilterRow>
           {healLvl > 0 && (
             <div style={{ fontSize:11, color:"#4b5563" }}>
-              Heal dmg vs undead: <span style={{ color:"#86efac" }}>{healDmg(healLvl, healTargets, CHAR.int, CHAR.luk, CHAR.weaponMatk).min.toFixed(0)}</span>-<span style={{ color:"#86efac" }}>{healDmg(healLvl, healTargets, CHAR.int, CHAR.luk, CHAR.weaponMatk).max.toFixed(0)}</span> per target
+              Heal dmg vs undead: <span style={{ color:"#86efac" }}>{healDmg(healLvl, CHAR.int, CHAR.luk, CHAR.weaponMatk).min.toFixed(0)}</span>-<span style={{ color:"#86efac" }}>{healDmg(healLvl, CHAR.int, CHAR.luk, CHAR.weaponMatk).max.toFixed(0)}</span> per target
             </div>
           )}
         </div>
@@ -985,7 +1096,7 @@ export default function App() {
             ))}
           </FilterRow>
 
-          <FilterRow label="Efficiency" hint="EFF RATIO = (HP+M.DEF)/(EXPx2), lower is better">
+          <FilterRow label="Efficiency" hint="EXP/HR tier relative to what's currently shown -- High = top third, Mid = middle third, Low = bottom third. Recalculates as you change level range/filters/character stats.">
             {[["Low","low"],["Mid","mid"],["High","high"]].map(([l,v])=>(
               <button key={l} onClick={()=>setEffFilter(f=>f===v?null:v)}
                 style={{ background:"#161b22", border:`1px solid ${effFilter===v?"#7c3aed":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:effFilter===v?"#a78bfa":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:effFilter===v?700:400 }}>
@@ -1007,7 +1118,7 @@ export default function App() {
             <button onClick={()=>setBossOnly(v=>!v)}
               title="Bosses are hidden by default (1-spawn/long-respawn, not viable for long grinding sessions) -- toggle to show ONLY bosses instead"
               style={{ background:"#161b22", border:`1px solid ${bossOnly?"#7f1d1d":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:bossOnly?"#fca5a5":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:bossOnly?700:400 }}>
-              {bossOnly ? "Boss Only" : "Hide Boss"}
+              {bossOnly ? "Boss Only" : "Hiding Boss"}
             </button>
             <button onClick={()=>setUndeadOnly(v=>!v)}
               style={{ background:"#161b22", border:`1px solid ${undeadOnly?"#14532d":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:undeadOnly?"#86efac":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:undeadOnly?700:400 }}>
@@ -1018,10 +1129,40 @@ export default function App() {
               Normal
             </button>
             <button onClick={()=>setHideUnknownLoc(v=>!v)}
-              title="Hides monsters with no resolved spawn location -- mostly event/unused mobs pulled in from the Cosmic v83 dump, not real farmable content"
+              title="Monsters with no resolved spawn location are hidden by default -- mostly event/unused mobs pulled in from the Cosmic v83 dump, not real farmable content"
               style={{ background:"#161b22", border:`1px solid ${hideUnknownLoc?"#374151":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:hideUnknownLoc?"#d1d5db":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:hideUnknownLoc?700:400 }}>
-              Hide Unknown Loc.
+              {hideUnknownLoc ? "Hiding Unknown Loc." : "Show Unknown Loc."}
             </button>
+            <button onClick={()=>setHideRopeHeavy(v=>!v)}
+              title="Hides monsters whose EVERY known spawn map is rope/ladder-heavy (see the ROPE-HEAVY map badge) -- a monster with at least one non-rope-heavy map stays visible"
+              style={{ background:"#161b22", border:`1px solid ${hideRopeHeavy?"#5c3315":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:hideRopeHeavy?"#f59e0b":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:hideRopeHeavy?700:400 }}>
+              {hideRopeHeavy ? "Hiding Rope-Heavy Maps" : "Show Rope-Heavy Maps"}
+            </button>
+            <button onClick={()=>setHideLowSpawn(v=>!v)}
+              title="Hides monsters whose EVERY known spawn map has a low total mob population (see the LOW SPAWN map badge) -- likely to be cleared faster than it respawns, leaving you idle. A monster with at least one well-stocked map stays visible"
+              style={{ background:"#161b22", border:`1px solid ${hideLowSpawn?"#5c1a1a":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:hideLowSpawn?"#f87171":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:hideLowSpawn?700:400 }}>
+              {hideLowSpawn ? "Hiding Low-Spawn Maps" : "Show Low-Spawn Maps"}
+            </button>
+            <button onClick={()=>setHideUnreachable(v=>!v)}
+              title="Hides monsters whose EVERY known spawn map has no confirmed portal path from a town (see the NO PORTAL PATH map badge). Caveat: this only follows walkable portals -- Party Quests and some event maps are entered via NPC dialogue and will show as unreachable even though they're real content. A monster with at least one confirmed-reachable map stays visible"
+              style={{ background:"#161b22", border:`1px solid ${hideUnreachable?"#3d1f5c":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:hideUnreachable?"#c4b5fd":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:hideUnreachable?700:400 }}>
+              {hideUnreachable ? "Hiding No-Portal-Path Maps" : "Show No-Portal-Path Maps"}
+            </button>
+          </FilterRow>
+
+          <FilterRow label="Min Map Score" hint="Hides a monster only if EVERY known spawn map scores below this for the given skill (1-5, 0=off). Heal threshold only applies to undead monsters.">
+            <span style={{ fontSize:10, color:"#6b7280" }}>MC</span>
+            <select value={minMcMapScore} onChange={e=>setMinMcMapScore(+e.target.value)}
+              style={{ background:"#161b22", border:"1px solid #30363d", borderRadius:4, color:"#e2e8f0", fontFamily:"inherit", fontSize:11, padding:"2px 4px" }}>
+              <option value={0}>off</option>
+              {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}+</option>)}
+            </select>
+            <span style={{ fontSize:10, color:"#6b7280", marginLeft:8 }}>Heal</span>
+            <select value={minHealMapScore} onChange={e=>setMinHealMapScore(+e.target.value)}
+              style={{ background:"#161b22", border:"1px solid #30363d", borderRadius:4, color:"#e2e8f0", fontFamily:"inherit", fontSize:11, padding:"2px 4px" }}>
+              <option value={0}>off</option>
+              {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}+</option>)}
+            </select>
           </FilterRow>
 
           {(query || weakFilter || effFilter || castsFilter) && (
@@ -1035,7 +1176,7 @@ export default function App() {
         </div>
 
         <div style={{ fontSize:11, color:"#4b5563", marginBottom:10, letterSpacing:1 }}>
-          {filtered.length} MONSTER{filtered.length!==1?"S":""} x EFF RATIO = (HP+M.DEF)/(EXPx2) x LOWER = BETTER FOR MAGIC
+          {filtered.length} MONSTER{filtered.length!==1?"S":""} x EXP/HR = (EXP x 2 / CASTS TO KILL) x 3600/CAST-TIME x HIGHER = BETTER
         </div>
 
         {/* Monster list */}
@@ -1063,15 +1204,15 @@ export default function App() {
         <div style={{ marginTop:24, fontSize:10, color:"#374151", textAlign:"center", lineHeight:1.8 }}>
           SOURCE: MEOWDB.COM/MSCLASSIC + LEGENDS.ML/LIB/MONSTER x {MONSTER_DB.length} MONSTERS INDEXED<br/>
           SPAWN MAPS: {Object.keys(REAL_SPAWNS).length}/{MONSTER_DB.length} MONSTERS MAP.WZ-VERIFIED, REST ARE CURATED/UNVERIFIED<br/>
-          STATS: {STAT_VERIFIED_IDS.size}/{MONSTER_DB.length} MONSTERS INDIVIDUALLY VERIFIED VS MAPLELEGENDS (LEGENDS.ML + COSMIC V83 CROSSWALK)<br/>
-          {MONSTER_DB.filter(m=>m.auto).length} ADDITIONAL MONSTERS (NORMAL) SOURCED FROM THE SAME COSMIC V83 DUMP (NOT INDIVIDUALLY SPOT-CHECKED)<br/>
+          STATS: {STAT_VERIFIED_IDS.size}/{MONSTER_DB.length} MONSTERS VERIFIED VS MAPLELEGENDS -- 105 CURATED VIA INDIVIDUAL LEGENDS.ML + COSMIC V83 CROSSWALK, REST VIA A DIVERSE SPOT-CHECK OF THE SAME-SOURCE COSMIC V83 IMPORT<br/>
+          {MONSTER_DB.length - STAT_VERIFIED_IDS.size} MONSTERS (NORMAL) NOT YET VERIFIED<br/>
           MAP SCORES: DERIVED FROM MAP.WZ FOOTHOLD + MOB-SPAWN GEOMETRY x {Object.keys(MAP_SCORES).length} MAPS SCORED<br/>
-          EFF RATIO = (HP + M.DEF) / (EXP x 2) x DAMAGE FORMULA: V62 MAGIC CLAW LV20
+          EXP/HR = (EXP x 2 / CASTS TO KILL) x 3600/CAST-TIME, WHERE CASTS TO KILL USES YOUR ACTUAL DAMAGE x DAMAGE FORMULA: V62 MAGIC CLAW
         </div>
       </div>
 
       {worldMapMapId !== null && (
-        <MapExpandModal mapId={worldMapMapId} onClose={()=>setWorldMapMapId(null)} />
+        <MapExpandModal key={worldMapMapId} mapId={worldMapMapId} onClose={()=>setWorldMapMapId(null)} />
       )}
     </div>
   );
@@ -1082,14 +1223,37 @@ export default function App() {
 // this map has no resolved world-map spot (e.g. a handful of Maple Island tutorial
 // maps whose regional world-map image wasn't included in the WorldMap.wz extract).
 function MapExpandModal({ mapId, onClose }) {
-  const spotInfo = WORLD_MAP_DATA.spots[mapId];
+  // currentMapId lets portal markers navigate within the modal without closing it;
+  // mapHistory is a simple back-stack of previously-viewed maps in this session.
+  // Pass key={mapId} where this is rendered so opening it for a different mapId
+  // (even without an intervening close) resets both to the fresh target.
+  const [currentMapId, setCurrentMapId] = useState(mapId);
+  const [mapHistory, setMapHistory] = useState([]);
+  const navigateTo = targetMapId => {
+    setMapHistory(h => [...h, currentMapId]);
+    setCurrentMapId(targetMapId);
+    setShowSpawns(false);
+    setShowRopes(false);
+    setShowPortals(false);
+  };
+  const goBack = () => {
+    setMapHistory(h => {
+      if (!h.length) return h;
+      setCurrentMapId(h[h.length - 1]);
+      return h.slice(0, -1);
+    });
+  };
+
+  const spotInfo = WORLD_MAP_DATA.spots[currentMapId];
   const region = spotInfo ? WORLD_MAP_DATA.regions[spotInfo.region] : null;
   const worldImg = spotInfo && `data/worldmaps/${spotInfo.region}.png`;
-  const mapNameFull = (typeof MAP_NAMES !== "undefined" && MAP_NAMES[mapId]) || null;
-  const spawnInfo = (typeof MAP_MOB_SPAWNS !== "undefined" && MAP_MOB_SPAWNS[mapId]) || null;
-  const ropeSegs = (typeof MAP_ROPES !== "undefined" && MAP_ROPES[mapId]) || null;
+  const mapNameFull = (typeof MAP_NAMES !== "undefined" && MAP_NAMES[currentMapId]) || null;
+  const spawnInfo = (typeof MAP_MOB_SPAWNS !== "undefined" && MAP_MOB_SPAWNS[currentMapId]) || null;
+  const ropeSegs = (typeof MAP_ROPES !== "undefined" && MAP_ROPES[currentMapId]) || null;
+  const portalInfo = (typeof MAP_PORTALS !== "undefined" && MAP_PORTALS[currentMapId]) || null;
   const [showSpawns, setShowSpawns] = useState(false);
   const [showRopes, setShowRopes] = useState(false);
+  const [showPortals, setShowPortals] = useState(false);
 
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"#000000cc", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
@@ -1098,13 +1262,20 @@ function MapExpandModal({ mapId, onClose }) {
           <div>
             {/* Styled like the in-game minimap's map-name bar: "Street : Map Name" */}
             <div style={{ color:"#e2e8f0", fontWeight:700, fontSize:14 }}>
-              {mapNameFull || `Map #${mapId}`}
+              {mapNameFull || `Map #${currentMapId}`}
             </div>
-            <div style={{ color:"#6b7280", fontSize:10, letterSpacing:1, marginTop:2 }}>MAP #{mapId}</div>
+            <div style={{ color:"#6b7280", fontSize:10, letterSpacing:1, marginTop:2 }}>MAP #{currentMapId}</div>
           </div>
-          <button onClick={onClose} style={{ background:"#21262d", border:"1px solid #30363d", borderRadius:4, color:"#e2e8f0", fontFamily:"inherit", fontSize:12, padding:"4px 10px", cursor:"pointer" }}>
-            [x] Close
-          </button>
+          <div style={{ display:"flex", gap:6 }}>
+            {mapHistory.length > 0 && (
+              <button onClick={goBack} style={{ background:"#21262d", border:"1px solid #30363d", borderRadius:4, color:"#e2e8f0", fontFamily:"inherit", fontSize:12, padding:"4px 10px", cursor:"pointer" }}>
+                [&lt;] Back
+              </button>
+            )}
+            <button onClick={onClose} style={{ background:"#21262d", border:"1px solid #30363d", borderRadius:4, color:"#e2e8f0", fontFamily:"inherit", fontSize:12, padding:"4px 10px", cursor:"pointer" }}>
+              [x] Close
+            </button>
+          </div>
         </div>
         <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
           <div style={{ flex:"1 1 260px" }}>
@@ -1140,14 +1311,29 @@ function MapExpandModal({ mapId, onClose }) {
                   ┃ Ropes/Ladders
                 </button>
               )}
+              {portalInfo && (
+                <button
+                  onClick={()=>setShowPortals(v=>!v)}
+                  style={{
+                    background: showPortals ? "#60a5fa22" : "#21262d",
+                    border: `1px solid ${showPortals ? "#60a5fa" : "#30363d"}`,
+                    borderRadius:999, color: showPortals ? "#60a5fa" : "#9ca3af",
+                    fontFamily:"inherit", fontSize:10, fontWeight:700,
+                    padding:"2px 9px", cursor:"pointer", letterSpacing:0.5, marginLeft:6,
+                  }}
+                  title={`${portalInfo.p.length} portal${portalInfo.p.length===1?"":"s"} (Map.wz portal data) -- click a marker to jump to that map`}
+                >
+                  ◆ Portals
+                </button>
+              )}
             </div>
             <div style={{ position:"relative", width:"100%", maxWidth:400 }}>
-              <img src={mapImg(mapId)} alt={mapNameFull || `Map ${mapId}`}
+              <img src={mapImg(currentMapId)} alt={mapNameFull || `Map ${currentMapId}`}
                 style={{ width:"100%", maxWidth:400, imageRendering:"pixelated", background:"#0d1117", border:"1px solid #30363d", borderRadius:4, display:"block" }}
                 onError={e=>{
                   if (!e.target.dataset.triedFallback) {
                     e.target.dataset.triedFallback = "1";
-                    e.target.src = mapImgFallback(mapId);
+                    e.target.src = mapImgFallback(currentMapId);
                   }
                 }} />
               {showSpawns && spawnInfo && (
@@ -1185,11 +1371,36 @@ function MapExpandModal({ mapId, onClose }) {
                   })}
                 </svg>
               )}
+              {showPortals && portalInfo && (
+                <div style={{ position:"absolute", inset:0 }}>
+                  {portalInfo.p.map(([x, y, tm], i) => {
+                    const div = 2 ** portalInfo.mag;
+                    const px = (x + portalInfo.centerX) / div;
+                    const py = (y + portalInfo.centerY) / div;
+                    const targetName = (typeof MAP_NAMES !== "undefined" && MAP_NAMES[tm]) || `Map #${tm}`;
+                    return (
+                      <div key={i}
+                        onClick={e=>{ e.stopPropagation(); navigateTo(tm); }}
+                        title={`-> ${targetName} (#${tm})`}
+                        style={{
+                          position:"absolute",
+                          left:`${(px / portalInfo.cw) * 100}%`,
+                          top:`${(py / portalInfo.ch) * 100}%`,
+                          transform:"translate(-50%,-50%)",
+                          width:10, height:10, cursor:"pointer",
+                          background:"#60a5fa", border:"1px solid #fff",
+                          boxShadow:"0 0 4px #000",
+                          clipPath:"polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
+                        }} />
+                    );
+                  })}
+                </div>
+              )}
             </div>
             {/* In-game minimaps show the map name directly under/over the map itself --
                 mirrored here so it's obvious at a glance which map this thumbnail is. */}
             <div style={{ marginTop:4, padding:"4px 8px", background:"#0d1117", border:"1px solid #30363d", borderRadius:4, fontSize:11, color:"#e2e8f0", textAlign:"center" }}>
-              {mapNameFull || `Map #${mapId} (name unavailable)`}
+              {mapNameFull || `Map #${currentMapId} (name unavailable)`}
             </div>
           </div>
           <div style={{ flex:"1 1 260px" }}>
@@ -1217,7 +1428,7 @@ function MapExpandModal({ mapId, onClose }) {
             {/* Same name label under the world map view, so it's unambiguous which
                 marker corresponds to which map even at a glance. */}
             <div style={{ marginTop:4, padding:"4px 8px", background:"#0d1117", border:"1px solid #30363d", borderRadius:4, fontSize:11, color:"#e2e8f0", textAlign:"center" }}>
-              {mapNameFull || `Map #${mapId} (name unavailable)`}
+              {mapNameFull || `Map #${currentMapId} (name unavailable)`}
             </div>
           </div>
         </div>

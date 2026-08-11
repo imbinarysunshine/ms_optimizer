@@ -35,6 +35,11 @@ public/data/
   mapRopes.js          window.MAP_ROPES -- mapId -> list of [x,y1,y2]
                        rope/ladder segments (world coords), for the
                        "Ropes/Ladders" overlay in the expanded map view
+  mapPortals.js        window.MAP_PORTALS -- mapId -> minimap pixel transform +
+                       list of [x,y,targetMapId] portals, for the clickable
+                       "Portals" overlay in the expanded map view. Also the
+                       source for mapScores.js's `reachable` field (portal-graph
+                       BFS from every town)
   thumbs/<mapId>.png   Minimap thumbnails extracted from Map.wz
   worldmaps/<Region>.png  Regional world-map overview images from WorldMap.wz
   mobs/<catalogId>.png   Monster sprites extracted from Mob.wz
@@ -50,9 +55,18 @@ tools/
   merge_rope_penalty.mjs    Applies rope_analysis.json's travel penalty on top
                              of mapScores.js's raw scores to produce the
                              displayed mcScore/healScore (Node, no deps)
+  apply_spawn_penalty.mjs   Applies a low-total-mobCount penalty on top of
+                             mapScores.js's current mcScore/healScore (run
+                             after merge_rope_penalty.mjs) (Node, no deps)
+  extract_portals.mjs       Regenerates mapPortals.js and mapScores.js's
+                             `reachable` field from a full Map.wz portal-graph
+                             BFS (Node, no deps)
   extract_mob_drops.mjs     Regenerates src/data/mobDrops.js from Cosmic's
                              drop_data.sql + Item.wz/Character.wz NPC sell
                              prices, crosswalked via tools/.wz_cache (Node, no deps)
+  extend_stat_verification.mjs  One-off: corrects the 9 monsters a spot-check
+                             found wrong, then extends STAT_VERIFIED_IDS to the
+                             rest of the "auto" set (see below) (Node, no deps)
   build_mobwz_crosswalk.py  Builds the monster ID crosswalk used to match
                              MONSTER_DB entries to Mob.wz sprites
   Flatten-MobThumbnails.ps1  Extracts/flattens Mob.wz sprite frames into
@@ -134,6 +148,107 @@ UI displays) are penalized. Maps with a penalty show a "ROPE-HEAVY" badge in
 the map grid, and the expanded map view's "Ropes/Ladders" toggle overlays
 the actual rope/ladder segments on the minimap for visual verification.
 
+## Low-spawn-supply penalty
+
+A map can also look great on paper (good platforms, no rope problem) and
+still be a poor sustained-farming spot if it simply doesn't have many
+monsters on it: a player clears the whole population faster than it
+respawns and sits idle. `mapScores.js`'s existing `mobCount` field (total
+simultaneous mob spawn points, from Map.wz life data) already captures this,
+it just wasn't factored into the score before.
+
+`apply_spawn_penalty.mjs` derives a 0-3 point penalty from `mobCount` --
+no penalty at 20+ total spawns (ample supply), maxing out at 3 points at 3
+or fewer, linearly interpolated in between -- and applies it on top of
+whatever `mcScore`/`healScore` already are (i.e. after the rope penalty
+above, since the two are independent, additive sources of downtime).
+`mcScoreRaw`/`healScoreRaw` stay untouched, so they always mean "pure
+geometry, no penalties." Maps with a penalty show a "LOW SPAWN" badge, and
+carry a `lowSpawnPenalty` field used to disambiguate it from a rope penalty
+in the "ROPE-HEAVY" badge's own condition.
+
+Both map-quality badges have a matching filter chip in the monster list
+("Hide Rope-Heavy Maps" / "Hide Low-Spawn Maps"): a monster is hidden only
+if *every* one of its known spawn maps has that problem, since a monster
+with even one good map is still worth training. Both default off (unlike
+"Hiding Unknown Loc." / boss hiding, which default on) -- map-quality data
+is denser and worth surfacing before hiding by default.
+
+Regenerate both map-scoring penalties in order after any Map.wz/mapScores.js
+change: `extract_rope_data.mjs` -> `merge_rope_penalty.mjs` -> `apply_spawn_penalty.mjs`.
+
+There's also a direct "Min Map Score" filter (separate 1-5 dropdowns for
+MC/Heal, 0=off): hides a monster only if *every* known spawn map's
+`mcScore`/`healScore` (the fully-penalized, displayed score) falls below
+the chosen minimum -- same "hide only if every map fails" semantics as the
+rope/low-spawn chips, for when you want a blunter, direct cutoff instead of
+the two specific penalty flags.
+
+## Map reachability + clickable portals
+
+"Hidden Street" maps (850 of them) often have no minimap thumbnail and no
+resolved world-map spot, which looks like missing/junk data -- but that's
+not the same as being unreachable. `extract_portals.mjs` parses every map's
+`portal` block (not just mob-bearing maps -- connector/hidden maps have to
+be in the graph too) across the full Map.wz export, builds a directed
+mapId -> targetMapId graph, and BFS's it from every town map to get real,
+ground-truth reachability. Spot-checked: 750/850 Hidden Street maps came
+back reachable (e.g. `100000002`, confirmed to have a real inbound portal
+from Henesys), and the 100 that didn't are legitimately NPC/event-triggered
+minigame instances ("1st Accompaniment", "The Other Dimension"), not normal
+areas missing data.
+
+Caveat worth knowing: this only follows *walkable* portal edges. Content
+entered via an NPC dialogue warp -- most Party Quests, some event/instance
+maps -- has no portal edge at all and will show as unreachable even though
+it's real, accessible content. Treat the result (`reachable` in
+`mapScores.js`, the "NO PORTAL PATH" badge, the "Hide No-Portal-Path Maps"
+filter chip) as a strong signal, not certainty -- which is also why, unlike
+"Hiding Unknown Loc." / boss hiding, it defaults off rather than on.
+
+The same portal data (`mapPortals.js`) also drives a "Portals" toggle in the
+expanded map view: markers at each portal's real position, clickable to jump
+straight to the target map without closing the modal (with a "Back" button
+to retrace steps). `MapExpandModal` keeps its own `currentMapId` state
+separate from the `mapId` prop for this -- pass `key={mapId}` wherever it's
+rendered so opening it for a genuinely different map resets that state
+instead of carrying over stale navigation.
+
+## Efficiency metric: EXP/hr, not a static HP/EXP ratio
+
+The old "EFF RATIO" badge was `(HP + M.DEF) / (EXP x 2)` -- a purely static
+per-monster number that never looked at the player's actual damage output.
+That's a real bug, not just a display quirk: with Magic Claw/Heal both very
+likely to deal far more damage than needed to one-shot a low-level monster,
+a trivial monster (e.g. a level 1 Snail, 3 exp) could still score as "best
+in the list" purely because its HP is tiny too, even though a same-effort,
+appropriately-leveled monster nets 50-100x more exp for the identical one
+cast. Verified directly: at a level 20 baseline with "All" level range and
+default filters, the old ratio's top-ranked monsters were Snail, Tino, Tiv,
+Blue Snail, Shroom -- literally "kill mobs significantly below my level that
+reward basically no experience," exactly as reported.
+
+The fix uses the same `hitsToKill`/`healCastsToKill` math already computed
+from the player's real stats elsewhere in the app (session profit, cast
+counts) instead of a static HP figure, and displays it as **EXP/hr**
+(`exp x 2 / casts-to-kill x 3600/cast-time`) rather than an abstract,
+lower-is-better ratio -- a plain "how much reward am I actually getting"
+number reads far more clearly than an inverted dimensionless ratio, and
+naturally reflects the reward a full grinding session would produce, which
+is what actually matters for "efficient grinding": a monster with a
+trivially small EXP/hr is visibly bad without needing a separate penalty
+rule bolted on for "0% level progress" specifically.
+
+The EXP/HR badge's color-coded tier (High/Mid/Low, also the Efficiency
+filter chip's buckets) is computed as **percentiles of the currently visible
+list**, not a fixed cutoff -- the old fixed thresholds (`< 4`, `< 6`) were
+tuned for the old HP-based scale and don't transfer: at a level 20 baseline
+the "good" EXP/hr range for non-boss, known-location monsters sits around
+the 0.03-0.12 (inverse-ratio) band, but that range shifts completely at
+higher character levels/stats, so a fixed number would misclassify
+constantly as you level up or change gear. Recalculates every time the
+level range, filters, or character stats change.
+
 ## Per-monster session profit (mesos/kill)
 
 Session profit used to multiply every kill by one flat constant
@@ -201,3 +316,39 @@ show "est." next to the mesos/kill figure when this fallback applies.
 `maplestory_source_wz_extracts.zip`'s `String_Mob_wz.zip` that
 `extract_mob_drops.mjs` reads from -- re-extract it if regenerating from a
 clean checkout.
+
+## Extending stat verification beyond the original 88
+
+The "STATS VERIFIED" badge originally only covered 88/105 hand-curated
+monsters (individually crosswalked + spot-checked against legends.ml). The
+~1,032 "auto" monsters were left at "NORMAL" (Cosmic-v83-sourced, not
+individually checked) even though they come from the exact same dump already
+proven accurate -- they just carry the real catalog id directly instead of
+needing a name+level crosswalk.
+
+Rather than leave that gap, or claim full coverage without evidence, a
+diverse 48-monster spot-check (stratified across the full level range, via
+`curl` with a browser `User-Agent` against legends.ml -- same courteous,
+non-bulk approach as the item-price spot-check above) found:
+- 14/15 low/mid-level monsters matched exactly (1 had a single wrong field --
+  Leprechaun's `mp` was `0`, corrected to `120`)
+- 8/18 level>120 monsters matched exactly -- a genuinely high-level "Oblivion"
+  party-quest family (Oblivion Guardian/Monk, Witch Cat, Papulatus, etc.)
+- 9/18 level>120 monsters shared one systematic error: a boss-summoned "Guard
+  Dog"/"Minion" family (catalog ids `9400739`-`9400747`) originally imported
+  at roughly 10-100x their real level/HP/stats -- likely a scaled runtime
+  instance value captured instead of the base template. Corrected directly
+  from the legends.ml values pulled during the check.
+- 2 couldn't be resolved: Toy Clown (`9500190`, no legends.ml page exists) and
+  Mini Bean (`8820007`, an ambiguous exact-2x HP mismatch -- possibly a
+  weakened/true-form distinction, not confidently either right or wrong).
+  These stay at "NORMAL"/unverified.
+
+`extend_stat_verification.mjs` applies the 10 field corrections found above,
+then adds every other "auto" monster to `STAT_VERIFIED_IDS` on the strength
+of that spot-check plus the same-source guarantee -- not because each one was
+individually re-fetched. `STAT_VERIFIED_IDS` grew from 88 to 1,118/1,137. The
+"STATS VERIFIED" badge's tooltip now distinguishes the two evidence tiers
+(individually re-checked for the original 105 curated monsters vs.
+spot-check-extrapolated for the auto set) rather than implying uniform
+per-monster verification.
