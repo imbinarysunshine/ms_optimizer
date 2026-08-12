@@ -92,7 +92,17 @@ tools/
                              miniMap data (Node, no deps)
   extract_portals.mjs       Regenerates mapPortals.js and mapScores.js's
                              `reachable` field from a full Map.wz portal-graph
-                             BFS (Node, no deps)
+                             BFS, plus its own hand-verified MANUAL_EXTRA_EDGES
+                             for script-triggered connections Map.wz can't
+                             encode a static target for -- see README.md
+                             "Script portals and manually-verified extra
+                             edges" (Node, no deps)
+  research_unreachable_clusters.mjs  Research tool (not part of the regular
+                             pipeline): clusters every unreachable mob-bearing
+                             map and surfaces plausible single-script-portal
+                             entry points as leads for extending
+                             MANUAL_EXTRA_EDGES above -- see the same README
+                             section (Node, no deps)
   extract_mob_drops.mjs     Regenerates src/data/mobDrops.js from Cosmic's
                              drop_data.sql + Item.wz/Character.wz NPC sell
                              prices, crosswalked via tools/.wz_cache (Node, no deps)
@@ -292,6 +302,42 @@ to retrace steps). `MapExpandModal` keeps its own `currentMapId` state
 separate from the `mapId` prop for this -- pass `key={mapId}` wherever it's
 rendered so opening it for a genuinely different map resets that state
 instead of carrying over stale navigation.
+
+### Script portals and manually-verified extra edges
+
+Map.wz's portal `pt` (type) field has 14 values (confirmed against
+OrionAlpha's `PortalType.java`, a real MapleStory server source): `0`
+StartPoint, `1` Invisible, `2` Visible, `3` Collision, `4`/`5` Changable,
+`6` TownPortal_Point, `10` Hidden, `12`/`13` Collision variants -- the BFS
+above follows all of these, since they all store a real target map (`tm`)
+in Map.wz. Four types don't: `7` Script, `8` Script_Invisible, `9`
+Collision_Script, `11` Script_Hidden -- these fire an NPC/reactor script
+that decides the real destination at runtime (Script.wz), which isn't in
+this dump, so the graph has no way to follow them automatically.
+
+This isn't a rare edge case (2,553 such portals exist across 1,348 maps --
+run `node tools/research_unreachable_clusters.mjs` to regenerate the
+breakdown), but the overwhelming majority aren't map transitions at all:
+802 alone are named `clear` (Party Quest stage-advance triggers), and
+most of the rest are dialogue/tutorial/job-advancement/UI hooks that reuse
+the portal object purely for touch detection. Bulk-guessing real
+destinations for all of them isn't viable from Map.wz alone, and doing so
+would break this project's own "verify, don't guess" standard.
+
+Where a case CAN be independently verified, it's added to
+`extract_portals.mjs`'s `MANUAL_EXTRA_EDGES` list as an explicit extra BFS
+edge (documented inline with the evidence). The one entry so far: Kerning
+City Subway (`103000100` -> `103000102`) was entirely unreachable --
+despite being 8 real, fully mob-bearing, fully portal-interlinked maps --
+because its only entrance from town is a Script portal. Verified via 3
+independent signals: (1) `103000102` ("Transfer Area") already has real,
+Map.wz-encoded portals fanning out to every subway line; (2) those
+portals' Visible-vs-Invisible split exactly matches known gameplay (Line 1
+Area 1 via a normal/Visible portal, Line 2 Area 1 via an unmarked/Invisible
+one on the map's right side); (3) no other map in the entire dataset has
+any inbound edge into the subway cluster at all. Adding that one edge lets
+the existing BFS naturally propagate reachability through all 8 maps via
+their own already-real portals -- no per-map patching needed.
 
 ## Efficiency metric: EXP/hr, not a static HP/EXP ratio
 

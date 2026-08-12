@@ -28,6 +28,45 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MAP_ROOT = "G:\\git-clones\\Cosmic\\wz\\Map.wz\\Map";
 const SCORES_PATH = path.join(__dirname, "..", "public", "data", "mapScores.js");
 const PORTALS_OUT_PATH = path.join(__dirname, "..", "public", "data", "mapPortals.js");
+
+// -- Manually-verified extra edges (portal-graph research, see tools/
+// research_unreachable_clusters.mjs) ------------------------------------------
+// Map.wz's portal `pt` (type) field has 14 values (StartPoint=0, Invisible=1,
+// Visible=2, Collision=3, Changable=4/5, TownPortal_Point=6, Script=7,
+// Script_Invisible=8, Collision_Script=9, Hidden=10, Script_Hidden=11,
+// Collision_VerticalJump=12, Collision_CustomImpact=13 -- confirmed against
+// OrionAlpha's PortalType.java, a real MapleStory server source). The BFS
+// above already follows every type EXCEPT Script/Script_Invisible/
+// Collision_Script/Script_Hidden (7/8/9/11), because those don't store a
+// static target map (`tm`) in Map.wz at all -- the real destination is only
+// resolved by an NPC/reactor SCRIPT (Script.wz), which isn't in this dump.
+//
+// Kerning City Subway is exactly this case: town map 103000000 has a normal
+// Visible portal ("sub00", pt=2) into 103000100, but 103000100's OWN only
+// forward portal ("in00") is pt=7 Script with no stored target -- so every
+// subway map (103000101-105, 200-202, all of them mob-bearing and otherwise
+// fully portal-linked to EACH OTHER) came up unreachable despite being real,
+// normal farming content. Verified via 3 independent signals: (1) 103000102
+// ("Transfer Area") already has real, Map.wz-encoded portals fanning out to
+// every subway line (Line 1 Area 1 via a Visible/pt=2 portal, Line 2 Area 1
+// via an Invisible/pt=1 portal at x=1034 -- the map's right side), so it's
+// clearly the intended hub; (2) that Visible-vs-Invisible split exactly
+// matches known gameplay ("Line 1 Area 1 via a normal portal, Line 2 via an
+// unmarked one on the right side"); (3) no other map in the entire dataset
+// has any inbound edge into the subway cluster at all -- 103000100's script
+// portal is the ONLY possible entry point.
+//
+// This is deliberately a short, individually-verified list, NOT a bulk fix --
+// research_unreachable_clusters.mjs found ~2,553 script-type portals across
+// 1,348 maps, but the overwhelming majority (802 alone named "clear") are
+// Party Quest stage-clear triggers or dialogue/tutorial/UI hooks that reuse
+// the portal object mechanism and were never map transitions to begin with.
+// Add to this list only with the same level of independent corroboration as
+// the entry below -- guessing at the rest would be exactly the kind of
+// unverified claim this project has avoided everywhere else.
+const MANUAL_EXTRA_EDGES = [
+  { from: 103000100, to: 103000102, reason: "Kerning City Subway entrance script portal (103000100 'in00', pt=7) -- see header comment above." },
+];
 const NO_TARGET = 999999999;
 
 function attr(line, name) {
@@ -121,25 +160,31 @@ function main() {
   }
   console.error(`Parsed ${maps.size} maps`);
 
-  // -- BFS reachability from every town map --
+  // -- BFS reachability from every town map (+ MANUAL_EXTRA_EDGES, see above) --
   const roots = [...maps.entries()].filter(([, m]) => m.isTown).map(([id]) => id);
   console.error(`${roots.length} town roots`);
+  const extraEdgesFrom = new Map(); // fromMapId -> [toMapId, ...]
+  for (const { from, to } of MANUAL_EXTRA_EDGES) {
+    if (!extraEdgesFrom.has(from)) extraEdgesFrom.set(from, []);
+    extraEdgesFrom.get(from).push(to);
+  }
   const reachable = new Set(roots);
   const queue = [...roots];
   while (queue.length) {
     const id = queue.pop();
     const m = maps.get(id);
-    if (!m) continue;
-    for (const p of m.portals) {
-      if (p.tm === NO_TARGET) continue;
-      if (!maps.has(p.tm)) continue; // target map doesn't actually exist in this export
-      if (!reachable.has(p.tm)) {
-        reachable.add(p.tm);
-        queue.push(p.tm);
+    const targets = [
+      ...(m ? m.portals.filter(p => p.tm !== NO_TARGET && maps.has(p.tm)).map(p => p.tm) : []),
+      ...(extraEdgesFrom.get(id) || []).filter(tm => maps.has(tm)),
+    ];
+    for (const tm of targets) {
+      if (!reachable.has(tm)) {
+        reachable.add(tm);
+        queue.push(tm);
       }
     }
   }
-  console.error(`${reachable.size}/${maps.size} maps reachable from town roots`);
+  console.error(`${reachable.size}/${maps.size} maps reachable from town roots (incl. ${MANUAL_EXTRA_EDGES.length} manual extra edges)`);
 
   // -- merge `reachable` into mapScores.js --
   const src = fs.readFileSync(SCORES_PATH, "utf8");
