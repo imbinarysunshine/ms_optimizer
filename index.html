@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MapleStory Monster DB + Map Training Scores</title>
+<style>
+  html, body { margin:0; padding:0; background:#0d1117; font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
+  #root { min-height:100vh; }
+</style>
+  <script type="module" crossorigin src="/ms_optimizer/assets/index-B77zl6u0.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<!-- Data files load first so App.jsx's top-level code can reference them immediately.
+     They attach to window (window.MAP_SCORES etc.) rather than using ES module exports;
+     see public/data/README.md if present, or the original localapp bundle's index.html. -->
+<script src="/ms_optimizer/data/mapScores.js"></script>
+<script src="/ms_optimizer/data/worldMapData.js"></script>
+<script src="/ms_optimizer/data/mapNames.js"></script>
+<script src="/ms_optimizer/data/mapMobSpawns.js"></script>
+<script src="/ms_optimizer/data/mapRopes.js"></script>
+<script src="/ms_optimizer/data/mapPortals.js"></script>
+</body>
+</html>
