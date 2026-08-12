@@ -1,14 +1,13 @@
 name: Deploy to GitHub Pages
 
+# Builds on every push to master and force-pushes the built site (dist/) to the
+# "pages" branch, which GitHub Pages serves directly -- repo Settings > Pages >
+# Build and deployment > Source must be set to "Deploy from a branch" -> pages ->
+# / (root). HTTPS on 443 is automatic once that's set; nothing to generate here.
 on:
   push:
     branches: [master]
   workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
 
 # Only one deploy at a time; a new push cancels any in-flight one.
 concurrency:
@@ -16,8 +15,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,16 +28,9 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
+      - run: touch dist/.nojekyll
+      - uses: peaceiris/actions-gh-pages@v4
         with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: dist
+          publish_branch: pages
