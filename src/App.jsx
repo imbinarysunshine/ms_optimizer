@@ -9,6 +9,7 @@ import {
   mpEaterAbsorbPerProc, mpEaterProcChance, mpEaterExpectedReturn, mpEaterAnyProcChance, netMpCost,
   calcLevelsGained, FALLBACK_INCOME_PER_KILL, incomePerKillFor,
   POTIONS, sessionProfit, elementalMultiplier, scaleDamage,
+  HP_POTIONS, hpLossPerSecond, isSuspiciousPotionPrice,
 } from "./lib/formulas";
 import { SKILLS, SKILL_LIST, SCORE_FIELD, SCORE_FIELD_RAW, SCORE_LABEL } from "./lib/classSkills";
 
@@ -470,7 +471,11 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                   <div style={{ color:"#6b7280", fontSize:9, marginBottom:2, letterSpacing:1 }}>{activeSkill.label.toUpperCase()} ({activeSkill.castTimeSec}s/{isHeal ? "cast" : "kill"})</div>
                   <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
                     <span><span style={{color:"#6b7280"}}>Kills: </span><span>{m.mcSession.kills.toLocaleString()}</span></span>
-                    <span><span style={{color:"#6b7280"}}>Pots: </span><span style={{color:"#f87171"}}>{m.mcSession.potCost.toLocaleString()}</span></span>
+                    <span><span style={{color:"#6b7280"}}>Pots: </span><span style={{color:"#f87171"}}>{m.mcSession.potCost.toLocaleString()}</span>
+                      {m.mcSession.hpPotCost > 0 && (
+                        <span style={{color:"#4b5563"}}> ({m.mcSession.mpPotsNeeded.toLocaleString()} MP + {m.mcSession.hpPotsNeeded.toLocaleString()} HP pots)</span>
+                      )}
+                    </span>
                     <span><span style={{color:"#6b7280"}}>Income: </span><span style={{color:"#86efac"}}>{m.mcSession.income.toLocaleString()}</span></span>
                     <span><span style={{color:"#6b7280"}}>Profit: </span>
                       <span style={{color: m.mcSession.profit >= 0 ? "#22c55e" : "#ef4444", fontWeight:700}}>
@@ -620,14 +625,16 @@ export default function App() {
   const [charLuk, setCharLuk] = useState(DEFAULT_CHAR.luk);
   const [charWeaponAtk, setCharWeaponAtk] = useState(DEFAULT_CHAR.weaponAtk);
   const [charMpMax, setCharMpMax] = useState(DEFAULT_CHAR.mpMax);
+  const [charHpMax, setCharHpMax] = useState(DEFAULT_CHAR.hpMax);
+  const [charDef, setCharDef] = useState(DEFAULT_CHAR.def);
   const [charExpPct, setCharExpPct] = useState(DEFAULT_CHAR.expPct);
   const [charPanelOpen, setCharPanelOpen] = useState(false);
 
   // Derived char object used everywhere
   const CHAR = useMemo(() => ({
     level: charLevel, str: charStr, dex: charDex, int: charInt, luk: charLuk,
-    weaponAtk: charWeaponAtk, mpMax: charMpMax,
-  }), [charLevel, charStr, charDex, charInt, charLuk, charWeaponAtk, charMpMax]);
+    weaponAtk: charWeaponAtk, mpMax: charMpMax, hpMax: charHpMax, def: charDef,
+  }), [charLevel, charStr, charDex, charInt, charLuk, charWeaponAtk, charMpMax, charHpMax, charDef]);
 
   const isHeal = activeSkillKey === "heal";
   const [healLvl, setHealLvl] = useState(0);
@@ -672,6 +679,15 @@ export default function App() {
   const [mpEaterLvl, setMpEaterLvl] = useState(0);
   const [sessionMins, setSessionMins] = useState(60);
   const [potionKey, setPotionKey] = useState("bluePotion");
+  // Incoming damage / HP potion usage -- see formulas.js's incomingDamagePerHit
+  // header comment for what this does and doesn't model. Defaults ON: warriors
+  // are melee and always in range (the "core part of warrior costs" case), and
+  // defaulting every class to modeling damage is the safer assumption for a
+  // training-spot profit estimate -- players who genuinely take no damage (kiting,
+  // pure ranged/safe-distance play) can turn it off, per the toggle's own purpose.
+  const [takeDamage, setTakeDamage] = useState(true);
+  const [hitIntervalSec, setHitIntervalSec] = useState(4); // 3-5s estimate, see formulas.js
+  const [hpPotionKey, setHpPotionKey] = useState("orangePotion");
 
   const filtered = useMemo(() => {
     // Selecting an unverified skill (see classSkills.js) means there's no trustworthy
@@ -732,11 +748,15 @@ export default function App() {
       // multi-mob AoE isn't throughput-modeled yet, same gap noted in classSkills.js).
       const killsPerCast = isHeal ? healTargets / (hits || 1) : 1;
       const netMpPerSessionUnit = isHeal ? netMp : netMp * hits;
+      // Incoming damage / HP potions -- see the "Take Damage" toggle and
+      // formulas.js's incomingDamagePerHit header comment. m.wAtk is this
+      // monster's own physical attack stat (already in MONSTER_DB).
+      const hpLossPerSec = takeDamage ? hpLossPerSecond(m.wAtk, CHAR.def, hitIntervalSec) : 0;
       // Elemental immunity means this skill can never kill this monster -- session
       // profit is a flat zero rather than running sessionProfit with a null hits.
       const session = immune
-        ? { casts: 0, kills: 0, potCost: 0, income: 0, profit: 0, totalExp: 0, levelsGained: 0, leftoverPct: charExpPct, finalLevel: CHAR.level }
-        : sessionProfit(sessionMins, activeSkill.castTimeSec, killsPerCast, netMpPerSessionUnit, m.exp, CHAR.level, charExpPct, potionKey, CHAR.mpMax, mobIncomePerKill);
+        ? { casts: 0, kills: 0, potCost: 0, mpPotCost: 0, hpPotCost: 0, mpPotsNeeded: 0, hpPotsNeeded: 0, income: 0, profit: 0, totalExp: 0, levelsGained: 0, leftoverPct: charExpPct, finalLevel: CHAR.level }
+        : sessionProfit(sessionMins, activeSkill.castTimeSec, killsPerCast, netMpPerSessionUnit, m.exp, CHAR.level, charExpPct, potionKey, CHAR.mpMax, mobIncomePerKill, hpLossPerSec, hpPotionKey, CHAR.hpMax);
       // Efficiency ratio = actual casts needed to kill / total exp on offer -- lower is
       // better (fewer casts per unit of exp). Deliberately NOT hp/exp: with damage far
       // exceeding what's needed to kill a low-level mob, a tiny-hp/tiny-exp monster
@@ -819,7 +839,7 @@ export default function App() {
     else if (sortBy === "exp") list.sort((a,b) => sortDir*(a.exp2x - b.exp2x));
     else if (sortBy === "hp") list.sort((a,b) => sortDir*(a.hp - b.hp));
     return list;
-  }, [query, levelMin, levelMax, bossOnly, undeadOnly, autoOnly, hideUnknownLoc, hideNoMapData, hideRopeHeavy, hideLowSpawn, hideUnreachable, minMapScore, weakFilter, effFilter, castsFilter, zoneFilter, sortBy, sortDir, isHeal, healTargets, mpEaterLvl, sessionMins, potionKey, CHAR, dmg, dmgFn, activeSkill]);
+  }, [query, levelMin, levelMax, bossOnly, undeadOnly, autoOnly, hideUnknownLoc, hideNoMapData, hideRopeHeavy, hideLowSpawn, hideUnreachable, minMapScore, weakFilter, effFilter, castsFilter, zoneFilter, sortBy, sortDir, isHeal, healTargets, mpEaterLvl, sessionMins, potionKey, takeDamage, hitIntervalSec, hpPotionKey, CHAR, dmg, dmgFn, activeSkill]);
 
   return (
     <div style={{ minHeight:"100vh", background:"#0d1117", fontFamily:"monospace", color:"#e2e8f0" }}>
@@ -903,6 +923,8 @@ export default function App() {
                 ["LUK", charLuk, setCharLuk, 4, 999, 1],
                 ["Weapon Attack", charWeaponAtk, setCharWeaponAtk, 0, 200, 1],
                 ["Max MP", charMpMax, setCharMpMax, 100, 30000, 10],
+                ["Max HP", charHpMax, setCharHpMax, 100, 30000, 10],
+                ["Defense", charDef, setCharDef, 0, 999, 1],
                 ["Current EXP %", charExpPct, setCharExpPct, 0, 99.99, 0.01],
               ].map(([label, val, setter, min, max, step]) => (
                 <div key={label}>
@@ -916,7 +938,8 @@ export default function App() {
                 <button onClick={() => {
                   setCharLevel(DEFAULT_CHAR.level); setCharStr(DEFAULT_CHAR.str); setCharDex(DEFAULT_CHAR.dex);
                   setCharInt(DEFAULT_CHAR.int); setCharLuk(DEFAULT_CHAR.luk); setCharWeaponAtk(DEFAULT_CHAR.weaponAtk);
-                  setCharMpMax(DEFAULT_CHAR.mpMax); setCharExpPct(DEFAULT_CHAR.expPct);
+                  setCharMpMax(DEFAULT_CHAR.mpMax); setCharHpMax(DEFAULT_CHAR.hpMax); setCharDef(DEFAULT_CHAR.def);
+                  setCharExpPct(DEFAULT_CHAR.expPct);
                 }} style={{ background:"#21262d", border:"1px solid #30363d", borderRadius:4, padding:"4px 12px", color:"#9ca3af", fontFamily:"monospace", fontSize:11, cursor:"pointer" }}>
                   Reset to defaults
                 </button>
@@ -973,6 +996,28 @@ export default function App() {
                 <option key={key} value={key}>{p.label}</option>
               ))}
             </select>
+          </FilterRow>
+          <FilterRow label="Take Damage" hint='Models incoming damage from the monster and the HP potions needed to sustain it -- roughly one hit every "Hit Interval" seconds for max(1, monster W.ATK - your Defense) each time. Warriors are melee and always in range for this; other classes only take it if you expect to be mobbed/pulling AoE packs. Turn off to model taking no damage at all.'>
+            <button onClick={()=>setTakeDamage(t=>!t)}
+              style={{ background: takeDamage ? "#7c3aed22" : "#161b22", border:`1px solid ${takeDamage ? "#7c3aed" : "#30363d"}`, borderRadius:4, padding:"3px 10px", color: takeDamage ? "#a78bfa" : "#6b7280", fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:"pointer" }}>
+              {takeDamage ? "ON" : "OFF"}
+            </button>
+            {takeDamage && (
+              <>
+                <span style={{ fontSize:10, color:"#6b7280", marginLeft:8 }}>Hit Interval</span>
+                <input type="range" min={3} max={5} step={0.5} value={hitIntervalSec} onChange={e=>setHitIntervalSec(+e.target.value)}
+                  style={{ width:70, accentColor:"#f87171" }} />
+                <span style={{ color:"#f87171", fontWeight:700, minWidth:26 }}>{hitIntervalSec}s</span>
+                <select value={hpPotionKey} onChange={e=>setHpPotionKey(e.target.value)}
+                  style={{ background:"#0d1117", color:"#e5e7eb", border:"1px solid #21262d", borderRadius:4, fontSize:11, padding:"2px 4px", marginLeft:8 }}>
+                  {Object.entries(HP_POTIONS).map(([key, p]) => (
+                    <option key={key} value={key} style={isSuspiciousPotionPrice(p, "hp") ? { color:"#f59e0b" } : undefined}>
+                      {p.label}{isSuspiciousPotionPrice(p, "hp") ? " (price unverified)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
           </FilterRow>
         </div>
 

@@ -8,6 +8,7 @@ import {
   MC_CAST_TIME_SEC, HEAL_CAST_TIME_SEC, MC_HITS_PER_CAST, POTIONS, sessionProfit,
   physicalBaseDamage, physicalSkillDamage, WEAPON_MULTIPLIERS,
   magicSkillDamage, elementalMultiplier, scaleDamage, ELEMENTAL_MULTIPLIER,
+  HP_POTIONS, incomingDamagePerHit, hpLossPerSecond, isSuspiciousPotionPrice,
 } from "../src/lib/formulas";
 import { SKILLS } from "../src/lib/classSkills";
 import { EXP_TABLE } from "../src/data/expTable";
@@ -632,5 +633,84 @@ describe("elemental magic skills (classSkills.js)", () => {
     expect(SKILLS.thunderBolt.mpCost()).toBe(40);
     expect(SKILLS.thunderBolt.mobCount).toBe(6);
     expect(SKILLS.thunderBolt.formula(stats)).toEqual(magicSkillDamage(stats.weaponAtk, stats.int, 60, 10));
+  });
+});
+
+// Incoming damage / HP potion usage -- see formulas.js's incomingDamagePerHit
+// header comment for what is and isn't modeled (an estimate, not a sourced
+// hit-chance/defense formula). HP_POTIONS prices are v62 Item.wz-sourced
+// (ids 2000000/2000001/2000002), same as POTIONS' MP items.
+describe("incomingDamagePerHit / hpLossPerSecond", () => {
+  it("damage is mob wAtk minus player defense, floored at 1", () => {
+    expect(incomingDamagePerHit(50, 20)).toBe(30);
+    expect(incomingDamagePerHit(10, 20)).toBe(1); // never negative/zero
+    expect(incomingDamagePerHit(50, 0)).toBe(50);
+    expect(incomingDamagePerHit(50)).toBe(50); // playerDef defaults to 0
+  });
+
+  it("hpLossPerSecond divides per-hit damage by the hit interval", () => {
+    expect(hpLossPerSecond(50, 20, 4)).toBeCloseTo(7.5, 10);
+    expect(hpLossPerSecond(50, 20, 3)).toBeGreaterThan(hpLossPerSecond(50, 20, 5)); // shorter interval = more DPS
+  });
+
+  it("hpLossPerSecond is 0 when hitIntervalSec is falsy (avoids divide-by-zero)", () => {
+    expect(hpLossPerSecond(50, 20, 0)).toBe(0);
+  });
+});
+
+describe("HP_POTIONS", () => {
+  it("every entry has a positive cost and hpFlat", () => {
+    for (const p of Object.values(HP_POTIONS)) {
+      expect(p.cost).toBeGreaterThan(0);
+      expect(p.hpFlat).toBeGreaterThan(0);
+    }
+  });
+
+  it("Red/Orange/White Potion match their sourced v62 Item.wz values", () => {
+    expect(HP_POTIONS.redPotion).toMatchObject({ cost: 25, hpFlat: 50 });
+    expect(HP_POTIONS.orangePotion).toMatchObject({ cost: 80, hpFlat: 150 });
+    expect(HP_POTIONS.whitePotion).toMatchObject({ cost: 160, hpFlat: 300 });
+  });
+});
+
+describe("isSuspiciousPotionPrice", () => {
+  it("flags nothing in the real, sourced HP_POTIONS/POTIONS sets", () => {
+    for (const p of Object.values(HP_POTIONS)) expect(isSuspiciousPotionPrice(p, "hp")).toBe(false);
+    for (const p of Object.values(POTIONS)) expect(isSuspiciousPotionPrice(p, "mp")).toBe(false);
+  });
+
+  it("flags an implausibly cheap or expensive flat-restore potion", () => {
+    expect(isSuspiciousPotionPrice({ cost: 1, hpFlat: 1000 }, "hp")).toBe(true); // way under 0.2 mesos/HP
+    expect(isSuspiciousPotionPrice({ cost: 100000, hpFlat: 10 }, "hp")).toBe(true); // way over 2 mesos/HP
+  });
+
+  it("never flags a %-based potion (no fixed per-unit rate to check)", () => {
+    expect(isSuspiciousPotionPrice({ cost: 999999, mpPct: 0.5 }, "mp")).toBe(false);
+  });
+});
+
+describe("sessionProfit with HP potion params", () => {
+  const base = [60, 2.0, 1, 5, 100, 20, 0, "bluePotion", 500, 50]; // minutes..incomePerKill, no HP params
+
+  it("omitting HP params behaves exactly as before (hpPotCost=0, potCost=mpPotCost)", () => {
+    const r = sessionProfit(...base);
+    expect(r.hpPotCost).toBe(0);
+    expect(r.hpPotsNeeded).toBe(0);
+    expect(r.potCost).toBe(r.mpPotCost);
+  });
+
+  it("a positive hpLossPerSec adds hpPotCost on top of the unchanged mpPotCost", () => {
+    const withoutHp = sessionProfit(...base);
+    const withHp = sessionProfit(...base, 7.5, "orangePotion", 400);
+    expect(withHp.mpPotCost).toBe(withoutHp.mpPotCost); // MP side is untouched
+    expect(withHp.hpPotCost).toBeGreaterThan(0);
+    expect(withHp.potCost).toBe(withHp.mpPotCost + withHp.hpPotCost);
+    expect(withHp.profit).toBeLessThan(withoutHp.profit); // extra cost eats into profit
+  });
+
+  it("falls back to Orange Potion for an unknown hpPotionKey", () => {
+    const known = sessionProfit(...base, 7.5, "orangePotion", 400);
+    const unknown = sessionProfit(...base, 7.5, "not-a-real-potion", 400);
+    expect(unknown).toEqual(known);
   });
 });
