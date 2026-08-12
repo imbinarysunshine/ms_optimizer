@@ -1,3 +1,7 @@
+// SUPERSEDED by tools/recompute_map_scores.mjs -- see README.md "Map-quality
+// scoring" for the gap-aware floor-penalty and neighboring-platform-clumping
+// fixes this file's meleeScore()/aoeScore() didn't have.
+//
 // Extends the existing mcScore/healScore map-quality scores (see analyze_maps.py)
 // with two more per-map scores, one for each additional skill "hitbox archetype"
 // discovered while sourcing every class's real v62 skill data this session (see

@@ -59,20 +59,37 @@ public/data/
   worldmaps/<Region>.png  Regional world-map overview images from WorldMap.wz
   mobs/<catalogId>.png   Monster sprites extracted from Mob.wz
 tools/
-  analyze_maps.py           Regenerates the geometry-only mcScoreRaw/
-                             healScoreRaw fields in mapScores.js from Map.wz
-                             foothold/spawn data
+  recompute_map_scores.mjs  CANONICAL: regenerates all 4 map-quality scores
+                             (mcScore/meleeScore/aoeScore/healScore, each skill's
+                             own hitbox archetype -- see classSkills.js) plus the
+                             rope-travel penalty, from Map.wz foothold/life/
+                             ladderRope data, in one pass (Node, no deps). See
+                             "Map-quality scoring" below. Supersedes the 5 tools
+                             below, which are kept for history but not part of
+                             the live regeneration pipeline anymore.
+  analyze_maps.py           SUPERSEDED by recompute_map_scores.mjs. Originally
+                             regenerated the geometry-only mcScoreRaw/healScoreRaw
+                             fields in mapScores.js from Map.wz foothold/spawn data.
+  extract_skill_map_scores.mjs  SUPERSEDED by recompute_map_scores.mjs. Originally
+                             added meleeScore/aoeScore alongside the existing
+                             mcScore/healScore.
+  extract_rope_data.mjs     SUPERSEDED by recompute_map_scores.mjs. Originally
+                             regenerated mapRopes.js and tools/rope_analysis.json
+                             (gitignored, intermediate) from Map.wz ladderRope +
+                             foothold data -- mapRopes.js itself (the "Ropes/
+                             Ladders" overlay data) is unaffected and still valid;
+                             only the score-penalty half of this tool is superseded.
+  merge_rope_penalty.mjs    SUPERSEDED by recompute_map_scores.mjs. Originally
+                             applied rope_analysis.json's travel penalty on top
+                             of mapScores.js's raw scores.
+  apply_spawn_penalty.mjs   Still current -- derives the lowSpawnPenalty field
+                             from mobCount. Run this BEFORE recompute_map_scores.mjs
+                             (which reads and folds in whatever lowSpawnPenalty is
+                             already on each entry, but doesn't compute it itself)
+                             any time mobCount has changed (e.g. after a fresh
+                             Map.wz life-data re-export).
   extract_mob_spawns.mjs    Regenerates mapMobSpawns.js from Map.wz life +
                              miniMap data (Node, no deps)
-  extract_rope_data.mjs     Regenerates mapRopes.js and tools/rope_analysis.json
-                             (gitignored, intermediate) from Map.wz ladderRope +
-                             foothold data (Node, no deps)
-  merge_rope_penalty.mjs    Applies rope_analysis.json's travel penalty on top
-                             of mapScores.js's raw scores to produce the
-                             displayed mcScore/healScore (Node, no deps)
-  apply_spawn_penalty.mjs   Applies a low-total-mobCount penalty on top of
-                             mapScores.js's current mcScore/healScore (run
-                             after merge_rope_penalty.mjs) (Node, no deps)
   extract_portals.mjs       Regenerates mapPortals.js and mapScores.js's
                              `reachable` field from a full Map.wz portal-graph
                              BFS (Node, no deps)
@@ -154,10 +171,11 @@ by their global names (e.g. `MAP_SCORES[mapId]`), so this wasn't changed.
 If more of Map.wz, WorldMap.wz, or Mob.wz gets exported later (to close gaps
 on unresolved monsters or missing thumbnails), the scripts in `tools/` are
 what regenerate `public/data/`:
-- `analyze_maps.py` -> `mapScores.js` (mcScoreRaw/healScoreRaw + platform metrics)
+- `apply_spawn_penalty.mjs` then `recompute_map_scores.mjs` -> `mapScores.js`'s
+  `mcScore`/`meleeScore`/`aoeScore`/`healScore` + platform metrics (see below)
 - `extract_mob_spawns.mjs` -> `mapMobSpawns.js`
-- `extract_rope_data.mjs` then `merge_rope_penalty.mjs` -> `mapRopes.js` and
-  `mapScores.js`'s displayed `mcScore`/`healScore` (see below)
+- `extract_rope_data.mjs` -> `mapRopes.js` (the "Ropes/Ladders" overlay data --
+  its score-penalty half is superseded by `recompute_map_scores.mjs`, see below)
 - `Flatten-MobThumbnails.ps1` -> `public/data/mobs/*.png`
 - `build_mobwz_crosswalk.py` -> the monster ID crosswalk (see
   `mobwz_verification_report.json` for the last verification pass' unresolved
@@ -166,46 +184,65 @@ what regenerate `public/data/`:
 `App.jsx` itself only needs edits if you're changing the app's logic or UI,
 not for data regeneration.
 
-## Rope/ladder travel penalty
+## Map-quality scoring (4 archetypes)
 
-`analyze_maps.py`'s original `mcScore`/`healScore` only look at platform
-length, alignment, and floor count -- they assume getting from one
-mob-bearing floor to the next costs the same whether it's a short jump or a
-long rope climb. It doesn't: rope/ladder travel is much slower, and a map
-can score well on paper while being tedious to actually farm (flagged via
-map `107000500`, "Dungeon: Damp Tree-Forest" -- scored 4/5 for MC despite 14
-separate rope segments covering 84% of its vertical span across 5 floors).
+Each verified skill (`src/lib/classSkills.js`) is tagged with a
+`mapScoreArchetype` -- `ranged`/`melee` (single-target, `mcScore`/`meleeScore`),
+`aoe` (same-platform multi-mob, `aoeScore`), or `vertical` (Heal's own huge
+box that reaches adjacent floors, `healScore`) -- so the map-quality badge and
+"Min Map Score" filter always reflect whichever skill is currently selected,
+not just Magic Claw/Heal. All 4 come from `recompute_map_scores.mjs`, in one
+pass over Map.wz foothold/life/ladderRope data.
 
-`extract_rope_data.mjs` reads each map's `ladderRope` block and its full
-foothold vertical extent, computes `ropeCoverageRatio` (union of rope
-y-ranges / total climbable height), and derives a 0-3 point penalty --
-gated to maps with a real farm-hopping shape (>=4 mob-bearing floors, >=3
-rope segments) so a single portal-access rope on an otherwise flat 1-2 floor
-map isn't flagged. `merge_rope_penalty.mjs` then applies that penalty on top
-of `analyze_maps.py`'s scores: `mcScoreRaw`/`healScoreRaw` in `mapScores.js`
-are the original geometry-only scores, and `mcScore`/`healScore` (what the
-UI displays) are penalized. Maps with a penalty show a "ROPE-HEAVY" badge in
-the map grid, and the expanded map view's "Ropes/Ladders" toggle overlays
-the actual rope/ladder segments on the minimap for visual verification.
+**Gap-aware floor penalty.** The original formula (still `mc`/`melee`/`aoe`'s
+shape) charges a tedium cost per extra mob-bearing floor -- but the *original*
+version of it (`analyze_maps.py`) charged a FLAT cost regardless of how far
+apart those floors actually were, treating an 82px gap (barely a step down)
+identically to a 500px gap (a real climb). This was caught reassessing
+`103000101` ("Kerning City Subway: Line 1 <Area 1>") -- 11 mob-bearing floors
+stacked in mostly 2-91px gaps, described as "many horizontal platforms... a
+bottom platform uninterrupted for the entire length... the stack is
+relatively tight" -- which scored a middling 3/5 despite matching a genuinely
+great farming map. Fixed: each gap is now scaled by
+`clamp(gapPx / GAP_REFERENCE_PX, 0, 1)` (350px = where a gap costs the old
+full unit) before summing, so a tight stack barely gets penalized while a
+real multi-floor dungeon still does.
 
-## Low-spawn-supply penalty
+**Neighboring-platform AoE clumping.** `aoeScore`'s old clump window only
+looked at mobs on the SAME platform, ignoring that every AoE skill has a real
+(if often small, ~50-140px) vertical reach of its own (Skill.wz lt/rb data,
+see `classSkills.js`) -- easily enough to also hit an adjacent platform on a
+tightly-stacked map. Fixed: the clump window now pulls in mobs from any
+platform within `AOE_VERTICAL_REACH_PX` (100px) of the anchor platform.
 
-A map can also look great on paper (good platforms, no rope problem) and
-still be a poor sustained-farming spot if it simply doesn't have many
-monsters on it: a player clears the whole population faster than it
-respawns and sits idle. `mapScores.js`'s existing `mobCount` field (total
-simultaneous mob spawn points, from Map.wz life data) already captures this,
-it just wasn't factored into the score before.
+**Rope/ladder travel penalty**, same tightness principle as the floor penalty
+above: rope/ladder travel is much slower than a jump, and a map can score
+well on paper while being tedious to actually farm (flagged via map
+`107000500`, "Dungeon: Damp Tree-Forest" -- 14 rope segments covering 84% of
+its vertical span across 5 REAL floors, correctly still penalized). But a
+rope connecting two platforms 20px apart is a non-event, not real travel
+tedium -- the old penalty (`extract_rope_data.mjs`/`merge_rope_penalty.mjs`)
+never distinguished the two. `recompute_map_scores.mjs`'s rope penalty now
+scales by the same per-gap tightness ratio, gated to maps with a real
+farm-hopping shape (>=4 mob-bearing floors, >=3 rope segments) so a single
+portal-access rope on an otherwise flat 1-2 floor map isn't flagged. Maps
+with a penalty show a "ROPE-HEAVY" badge in the map grid, and the expanded
+map view's "Ropes/Ladders" toggle overlays the actual segments for visual
+verification.
 
-`apply_spawn_penalty.mjs` derives a 0-3 point penalty from `mobCount` --
-no penalty at 20+ total spawns (ample supply), maxing out at 3 points at 3
-or fewer, linearly interpolated in between -- and applies it on top of
-whatever `mcScore`/`healScore` already are (i.e. after the rope penalty
-above, since the two are independent, additive sources of downtime).
-`mcScoreRaw`/`healScoreRaw` stay untouched, so they always mean "pure
-geometry, no penalties." Maps with a penalty show a "LOW SPAWN" badge, and
-carry a `lowSpawnPenalty` field used to disambiguate it from a rope penalty
-in the "ROPE-HEAVY" badge's own condition.
+**Low-spawn-supply penalty**: a map can also look great on paper (good
+platforms, no rope problem) and still be a poor sustained-farming spot if it
+simply doesn't have many monsters on it -- a player clears the whole
+population faster than it respawns and sits idle. `apply_spawn_penalty.mjs`
+derives a 0-3 point penalty from `mobCount` (total simultaneous spawn
+points) -- no penalty at 20+ total spawns, maxing out at 3 points at 3 or
+fewer, linearly interpolated in between -- stored as `lowSpawnPenalty`, which
+`recompute_map_scores.mjs` then folds into all 4 scores identically (an
+independent, additive source of downtime same as the rope penalty). The
+`*Raw` fields (`mcScoreRaw`, `meleeScoreRaw`, etc.) stay untouched by either
+penalty, so they always mean "pure geometry." Maps with a penalty show a
+"LOW SPAWN" badge, disambiguated from a rope penalty via the
+`lowSpawnPenalty` field.
 
 Both map-quality badges have a matching filter chip in the monster list
 ("Hide Rope-Heavy Maps" / "Hide Low-Spawn Maps"): a monster is hidden only
@@ -214,12 +251,14 @@ with even one good map is still worth training. Both default off (unlike
 "Hiding Unknown Loc." / boss hiding, which default on) -- map-quality data
 is denser and worth surfacing before hiding by default.
 
-Regenerate both map-scoring penalties in order after any Map.wz/mapScores.js
-change: `extract_rope_data.mjs` -> `merge_rope_penalty.mjs` -> `apply_spawn_penalty.mjs`.
+Regenerate after any Map.wz/mapScores.js change, in order:
+`apply_spawn_penalty.mjs` -> `recompute_map_scores.mjs` (see the tools table
+above for why that order matters).
 
-There's also a direct "Min Map Score" filter (separate 1-5 dropdowns for
-MC/Heal, 0=off): hides a monster only if *every* known spawn map's
-`mcScore`/`healScore` (the fully-penalized, displayed score) falls below
+There's also a direct "Min Map Score" filter (a single 1-5 dropdown, labeled
+RANGE/MELEE/AOE/STACK for whichever skill is active, 0=off): hides a monster
+only if *every* known spawn map's score for that skill's own archetype falls
+below
 the chosen minimum -- same "hide only if every map fails" semantics as the
 rope/low-spawn chips, for when you want a blunter, direct cutoff instead of
 the two specific penalty flags.

@@ -1,3 +1,9 @@
+// SUPERSEDED (score-penalty half only) by tools/recompute_map_scores.mjs -- see
+// README.md "Map-quality scoring". The mapRopes.js output below (used by the
+// "Ropes/Ladders" map overlay) is still current; only rope_analysis.json and the
+// penalizedMcScore/penalizedHealScore fields it fed into merge_rope_penalty.mjs
+// are superseded, by a gap-size-aware version of this same penalty.
+//
 // Parse every map .img.xml in Map.wz and extract ladderRope segments plus the
 // full foothold vertical extent, to measure how "rope/ladder-reliant" a map
 // is for getting between mob-bearing floors -- a form of tedium the original

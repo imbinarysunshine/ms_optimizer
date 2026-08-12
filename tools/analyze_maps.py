@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """
+SUPERSEDED by tools/recompute_map_scores.mjs -- see README.md "Map-quality
+scoring" for the gap-aware floor-penalty fix that replaces this file's
+score_map() formula.
+
 Parse every map .img.xml in Map.wz, extract foothold geometry + mob spawn life
 entries, cluster footholds into "platforms", and score each map 1-5 for
 Magic Claw training efficiency and Heal training efficiency.
