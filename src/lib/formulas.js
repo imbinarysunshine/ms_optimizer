@@ -9,7 +9,10 @@ import { MOB_INCOME_PER_KILL } from "../data/mobDrops";
 // str/dex exist so the stat block works for any class's AP distribution (see
 // classSkills.js), not just Magician -- Magic Claw/Heal (the only verified skills
 // today) only ever read int/luk/weaponAtk, so str/dex sit at a nominal base value.
-export const DEFAULT_CHAR = { level:20, str:4, dex:4, int:87, luk:23, weaponAtk:21, mpMax:571, expPct:28 };
+// hpMax/def default to a plausible unfunded lvl20 build (low starting DEF, since
+// Defense isn't otherwise tracked elsewhere in this app -- see incomingDamagePerHit
+// above) rather than anything wz-sourced; both are user-adjustable sliders.
+export const DEFAULT_CHAR = { level:20, str:4, dex:4, int:87, luk:23, weaponAtk:21, mpMax:571, hpMax:400, def:20, expPct:28 };
 
 // Which stats grow per level and by how much, under a "full offense" AP build --
 // this app only ever models one build style per class (matching how it already
@@ -261,8 +264,17 @@ export function incomePerKillFor(mobId) {
 export const MC_CAST_TIME_SEC = 2.0;   // seconds per Magic Claw kill (cast + reposition)
 export const HEAL_CAST_TIME_SEC = 3.0; // seconds per Heal cycle (cast + move to next group)
 
-// MP-restore items available for session profit calc, verified against v62 Item.wz Consume data
-// (private-server prices: some drop-only items are NPC-purchasable for convenience here)
+// MP-restore items available for session profit calc, verified against v62 Item.wz
+// Consume data (item ids 2000003/2000006/2000004/2000005, meso prices sourced from
+// a real v62 dump's Item.wz -- see HP_POTIONS below for the sibling HP items and
+// the same dump's Consume/0200.img.xml). Elixir/Power Elixir's real v62 effect is
+// dual: they restore HP *and* MP (mpPct AND an equal hpPct -- see their `desc`
+// string: "Recovers 50% HP and 50% MP" / "Recovers all HP and MP"), not MP-only as
+// modeled here previously -- kept MP-only intentionally: this app treats HP and MP
+// consumption as two independent potion-buying streams (see hpLossPerSec below),
+// so a player using Elixir for MP is assumed to carry separate HP pots too, same as
+// real farming habits at these levels. Not modeling the combined discount a
+// dual-potion strategy would give is a deliberate simplification, not an oversight.
 export const POTIONS = {
   bluePotion: { label: "Blue Potion (100m / 100MP)", cost: 100, mpFlat: 100, mpPct: null },
   manaElixir: { label: "Mana Elixir (310m / 300MP)", cost: 310, mpFlat: 300, mpPct: null },
@@ -270,16 +282,48 @@ export const POTIONS = {
   powerElixir: { label: "Power Elixir (2500m / 100% MP)", cost: 2500, mpFlat: null, mpPct: 1.0 },
 };
 
+// HP-restore items, sourced the same way as POTIONS above (v62 Item.wz Consume ids
+// 2000000/2000001/2000002). No %-based HP item is included here (Elixir/Power
+// Elixir's HP half is intentionally unmodeled -- see POTIONS comment).
+export const HP_POTIONS = {
+  redPotion: { label: "Red Potion (25m / 50HP)", cost: 25, hpFlat: 50 },
+  orangePotion: { label: "Orange Potion (80m / 150HP)", cost: 80, hpFlat: 150 },
+  whitePotion: { label: "White Potion (160m / 300HP)", cost: 160, hpFlat: 300 },
+};
+
+// Sanity-checks a potion's meso-per-restored-unit rate against the real v62 items
+// above (Red/Orange/White Potion land at ~0.5-0.53 mesos/HP; Blue Potion/Mana
+// Elixir at ~1.0-1.03 mesos/MP) -- exists so a future item added to either table
+// with a typo'd or drop-only/unpurchasable price doesn't silently distort session
+// profit math. Only flags flat-amount potions (mpFlat/hpFlat); %-based ones
+// (Elixir/Power Elixir) have no fixed per-unit rate to check this way.
+export function isSuspiciousPotionPrice(potion, kind) {
+  const amount = kind === "hp" ? potion.hpFlat : potion.mpFlat;
+  if (amount == null || amount <= 0) return false;
+  const rate = potion.cost / amount;
+  return kind === "hp" ? (rate < 0.2 || rate > 2) : (rate < 0.3 || rate > 3);
+}
+
 // castTimeSec is the active skill's own cast time (see classSkills.js) -- generic
-// over any skill rather than special-casing "mc" vs "heal" by name.
-export function sessionProfit(minutes, castTimeSec, killsPerCast, netMpCostPerCast, expPerKill, charLevel, charExpPct, potionKey, charMpMax, incomePerKill) {
+// over any skill rather than special-casing "mc" vs "heal" by name. hpLossPerSec/
+// hpPotionKey are optional (default to no HP cost) so every existing call site and
+// test keeps its exact prior behavior unless it opts in -- see App.jsx's "Take
+// Damage" toggle and incomingDamagePerHit() below for how hpLossPerSec is derived.
+export function sessionProfit(minutes, castTimeSec, killsPerCast, netMpCostPerCast, expPerKill, charLevel, charExpPct, potionKey, charMpMax, incomePerKill, hpLossPerSec = 0, hpPotionKey = null, charHpMax = 1) {
   const potion = POTIONS[potionKey] || POTIONS.bluePotion;
   const mpPerPotion = potion.mpFlat != null ? potion.mpFlat : potion.mpPct * (charMpMax || 1);
   const secs = minutes * 60;
   const casts = secs / castTimeSec;
   const kills = casts * killsPerCast;
-  const potsNeeded = (casts * netMpCostPerCast) / mpPerPotion;
-  const potCost = potsNeeded * potion.cost;
+  const mpPotsNeeded = (casts * netMpCostPerCast) / mpPerPotion;
+  const mpPotCost = mpPotsNeeded * potion.cost;
+  let hpPotsNeeded = 0, hpPotCost = 0;
+  if (hpLossPerSec > 0 && hpPotionKey) {
+    const hpPotion = HP_POTIONS[hpPotionKey] || HP_POTIONS.orangePotion;
+    hpPotsNeeded = (secs * hpLossPerSec) / hpPotion.hpFlat;
+    hpPotCost = hpPotsNeeded * hpPotion.cost;
+  }
+  const potCost = mpPotCost + hpPotCost;
   const income = kills * incomePerKill;
   const profit = income - potCost;
   const totalExp = kills * expPerKill * EXP_MULTI;
@@ -288,6 +332,10 @@ export function sessionProfit(minutes, castTimeSec, killsPerCast, netMpCostPerCa
     casts: Math.round(casts),
     kills: Math.round(kills),
     potCost: Math.round(potCost),
+    mpPotCost: Math.round(mpPotCost),
+    hpPotCost: Math.round(hpPotCost),
+    mpPotsNeeded: Math.round(mpPotsNeeded),
+    hpPotsNeeded: Math.round(hpPotsNeeded),
     income: Math.round(income),
     profit: Math.round(profit),
     totalExp: Math.round(totalExp),
@@ -295,4 +343,22 @@ export function sessionProfit(minutes, castTimeSec, killsPerCast, netMpCostPerCa
     leftoverPct,
     finalLevel,
   };
+}
+
+// -- Incoming damage (HP potion usage) ---------------------------------------
+// Estimate, not a sourced formula: real MapleStory incoming-hit chance depends on
+// a monster's accuracy vs the player's avoidability (a formula this session didn't
+// source/verify), and real damage depends on the player's own weapon/magic
+// defense (a stat this app doesn't otherwise track). Rather than guess at either,
+// this models the simpler thing actually asked for -- roughly one incoming hit
+// every HIT_INTERVAL_SEC seconds (3-5s, user-configurable) while in combat range,
+// for max(1, monster wAtk - player DEF) damage each time. Warriors are melee and
+// always in range; other classes only take this cost when the "Take Damage"
+// toggle is on (AoE/mobbing pulls, standing in a pack, etc.) -- see App.jsx.
+export function incomingDamagePerHit(mobWatk, playerDef) {
+  return Math.max(1, mobWatk - (playerDef || 0));
+}
+export function hpLossPerSecond(mobWatk, playerDef, hitIntervalSec) {
+  if (!hitIntervalSec) return 0;
+  return incomingDamagePerHit(mobWatk, playerDef) / hitIntervalSec;
 }
