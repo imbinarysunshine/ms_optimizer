@@ -90,17 +90,25 @@ describe("mobWzId", () => {
 });
 
 describe("scoreColor", () => {
-  it("colors 4-5 as good (green)", () => {
-    expect(scoreColor(4)).toBe("#4ade80");
-    expect(scoreColor(5)).toBe("#4ade80");
+  it("gives each score 1-5 its own distinct color (a true gradient, not 3 buckets)", () => {
+    const colors = [1, 2, 3, 4, 5].map(scoreColor);
+    expect(new Set(colors).size).toBe(5);
   });
 
-  it("colors exactly 3 as neutral (yellow)", () => {
-    expect(scoreColor(3)).toBe("#facc15");
+  it("colors 1 red and 5 green -- the two gradient endpoints", () => {
+    expect(scoreColor(1)).toBe("#ef4444");
+    expect(scoreColor(5)).toBe("#22c55e");
   });
 
-  it("colors below 3 as bad (red)", () => {
-    expect(scoreColor(1)).toBe("#f87171");
-    expect(scoreColor(2)).toBe("#f87171");
+  it("colors exactly 3 as the midpoint (yellow/amber)", () => {
+    expect(scoreColor(3)).toBe("#eab308");
+  });
+
+  it("is monotonically increasing in green-ness / decreasing in red-ness from 1 to 5", () => {
+    // Not asserting exact hex math -- just that 1 and 2 are visually "worse" (more red)
+    // than 4 and 5 ("better"/green), i.e. it isn't just 2 flat buckets in disguise.
+    const colors = [1, 2, 3, 4, 5].map(scoreColor);
+    expect(colors[0]).not.toBe(colors[1]);
+    expect(colors[3]).not.toBe(colors[4]);
   });
 });

@@ -3,13 +3,14 @@ import { MONSTER_DB, STAT_VERIFIED_IDS, UNDEAD_IDS } from "./data/monsterDb";
 import { EXP_TABLE } from "./data/expTable";
 import { MOB_INCOME_PER_KILL } from "./data/mobDrops";
 import {
-  DEFAULT_CHAR, INT_PER_LEVEL, LUK_PER_LEVEL, statsAtLevel,
-  EXP_MULTI, SPELL_ATK, MASTERY, MC_HITS_PER_CAST, calcDmg, hitsToKill,
-  HEAL_TARGET_MULT, healDmg, healCastsToKill, oneshotLevel,
+  DEFAULT_CHAR, statsAtLevel,
+  EXP_MULTI, SPELL_ATK, MASTERY, hitsToKill,
+  HEAL_TARGET_MULT, healDmg, oneshotLevel,
   mpEaterAbsorbPerProc, mpEaterProcChance, mpEaterExpectedReturn, mpEaterAnyProcChance, netMpCost,
   calcLevelsGained, FALLBACK_INCOME_PER_KILL, incomePerKillFor,
-  MC_CAST_TIME_SEC, HEAL_CAST_TIME_SEC, POTIONS, sessionProfit,
+  POTIONS, sessionProfit, elementalMultiplier, scaleDamage,
 } from "./lib/formulas";
+import { SKILLS, SKILL_LIST, SCORE_FIELD, SCORE_FIELD_RAW, SCORE_LABEL } from "./lib/classSkills";
 
 // Source: community knowledge of v62 map layouts (ESTIMATED - to be replaced with Map.wz foothold data)
 // healCoverage: estimated monsters hittable per Heal cast standing still at optimal position (1-6)
@@ -65,7 +66,11 @@ const MAP_PLATFORM_DATA = {
 };
 
 const healCoverageColor = n => n >= 5 ? "#22c55e" : n >= 4 ? "#84cc16" : n >= 3 ? "#eab308" : "#ef4444";
-export const scoreColor = n => n >= 4 ? "#4ade80" : n === 3 ? "#facc15" : "#f87171";
+// One distinct color per 1-5 map score value (RANGE/MELEE/AOE/STACK badges) -- a
+// true red-to-green gradient (1=worst, 5=best), not the old 3-bucket red/yellow/
+// green scheme, so the difference between e.g. a 2 and a 3 is visible at a glance.
+const SCORE_GRADIENT = { 1: "#ef4444", 2: "#f97316", 3: "#eab308", 4: "#84cc16", 5: "#22c55e" };
+export const scoreColor = n => SCORE_GRADIENT[n] || SCORE_GRADIENT[1];
 
 // Unified spawn-map lookup: prefer Map.wz-verified REAL_SPAWNS, fall back to
 // the hand-curated MONSTER_MAPS. Returns {name, mapId, count, verified}[] or null.
@@ -380,7 +385,7 @@ function FilterRow({ label, hint, children }) {
   );
 }
 
-function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg, healLvl, healTargets, mpEaterLvl, sessionMins, potionKey }) {
+function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg, activeSkill, isHeal, healTargets, mpEaterLvl, sessionMins, potionKey }) {
   return (
             <div key={m.id} onClick={()=>setSelected(selected===m.id?null:m.id)}
               style={{ background:"#161b22", border:`1px solid ${selected===m.id?"#7c3aed":i===0&&!selected?"#7c3aed44":"#21262d"}`, borderRadius:8, padding:"10px 14px", cursor:"pointer", transition:"border-color 0.15s" }}>
@@ -408,7 +413,7 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                 <div style={{ textAlign:"right", flexShrink:0 }}
                   title="Exp per hour of continuous casting at your current stats/level -- top/middle/bottom third of what's currently shown, not a fixed number">
                   <span style={{ fontSize:20, fontWeight:700, color:effTierColor(m.effTier) }}>{formatExpPerHour(m.primaryExpPerHour)}</span>
-                  <div style={{ fontSize:9, color:"#4b5563" }}>EXP/HR{m.undead && healLvl > 0 ? " (HEAL)" : ""}</div>
+                  <div style={{ fontSize:9, color:"#4b5563" }}>EXP/HR</div>
                 </div>
               </div>
 
@@ -424,14 +429,24 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
               </div>
 
               {/* Combat */}
-              <div style={{ marginTop:8, padding:"6px 10px", background:"#0d1117", borderRadius:4, borderLeft:`3px solid ${m.hits===1?"#22c55e":m.hits===2?"#eab308":"#ef4444"}`, fontSize:11, display:"flex", gap:14, flexWrap:"wrap" }}>
-                <span><span style={{color:"#6b7280"}}>CASTS: </span><span style={{color:m.hits===1?"#22c55e":m.hits===2?"#eab308":"#ef4444", fontWeight:700}}>{m.hits}{m.hits===1?" [OK] ONE-SHOT":""}</span></span>
-                <span><span style={{color:"#6b7280"}}>YOUR DMG: </span>{(dmg.min*MC_HITS_PER_CAST).toFixed(0)}-{(dmg.max*MC_HITS_PER_CAST).toFixed(0)}/cast ({dmg.min.toFixed(0)}-{dmg.max.toFixed(0)}/hit x2) vs {m.effHP}</span>
-                <span><span style={{color:"#6b7280"}}>MP/KILL: </span><span style={{color:"#0ea5e9"}}>{m.hits*20}</span>
-                  {mpEaterLvl > 0 && m.mp > 0 && (
-                    <span style={{color:"#60a5fa"}}> (net ~{(m.mcNetMp * m.hits).toFixed(1)} w/MPE {(m.mcAnyProc*100).toFixed(0)}% proc)</span>
+              <div style={{ marginTop:8, padding:"6px 10px", background:"#0d1117", borderRadius:4, borderLeft:`3px solid ${m.elementalMult===0?"#6b7280":m.hits===1?"#22c55e":m.hits===2?"#eab308":"#ef4444"}`, fontSize:11, display:"flex", gap:14, flexWrap:"wrap" }}>
+                {m.elementalMult === 0 ? (
+                  <span><span style={{color:"#6b7280"}}>CASTS: </span><span style={{color:"#9ca3af", fontWeight:700}}>N/A -- IMMUNE to {activeSkill.element}</span></span>
+                ) : (
+                  <span><span style={{color:"#6b7280"}}>CASTS: </span><span style={{color:m.hits===1?"#22c55e":m.hits===2?"#eab308":"#ef4444", fontWeight:700}}>{m.hits}{m.hits===1?" [OK] ONE-SHOT":""}</span></span>
+                )}
+                <span><span style={{color:"#6b7280"}}>YOUR DMG: </span>{(m.dmgMin*activeSkill.hitsPerCast).toFixed(0)}-{(m.dmgMax*activeSkill.hitsPerCast).toFixed(0)}/cast ({m.dmgMin.toFixed(0)}-{m.dmgMax.toFixed(0)}/hit x{activeSkill.hitsPerCast}) vs {m.effHP}
+                  {activeSkill.element && m.elementalMult !== 1 && (
+                    <span style={{color: m.elementalMult > 1 ? "#4ade80" : m.elementalMult === 0 ? "#9ca3af" : "#f87171"}}> ({m.elementalMult}x {m.elementalMult > 1 ? "weak" : m.elementalMult === 0 ? "immune" : "resist"})</span>
                   )}
                 </span>
+                {m.elementalMult !== 0 && (
+                  <span><span style={{color:"#6b7280"}}>MP/{isHeal ? "CAST" : "KILL"}: </span><span style={{color:"#0ea5e9"}}>{isHeal ? m.mpCostPerCast : m.hits*m.mpCostPerCast}</span>
+                    {mpEaterLvl > 0 && m.mp > 0 && (
+                      <span style={{color:"#60a5fa"}}> (net ~{(isHeal ? m.mcNetMp : m.mcNetMp * m.hits).toFixed(1)} w/MPE {(m.mcAnyProc*100).toFixed(0)}% proc)</span>
+                    )}
+                  </span>
+                )}
                 {m.hits > 1 && m.oneshotLvl && (
                   <span><span style={{color:"#6b7280"}}>ONE-SHOT @ </span><span style={{color:"#a78bfa"}}>Lv{m.oneshotLvl}</span> <span style={{color:"#374151"}}>({m.oneshotLvl-CHAR.level} lvls)</span></span>
                 )}
@@ -446,74 +461,27 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                 </div>
               )}
 
-              {/* Heal combat (undead only) */}
-              {m.undead && healLvl > 0 && (
-                <div style={{ marginTop:6, padding:"6px 10px", background:"#0a1f0a", borderRadius:4, borderLeft:"3px solid #86efac", fontSize:11, display:"flex", gap:14, flexWrap:"wrap" }}>
-                  <span style={{ color:"#86efac", fontWeight:700 }}>+ HEAL</span>
-                  <span><span style={{color:"#6b7280"}}>CASTS TO KILL: </span>
-                    <span style={{color: m.healCasts===1?"#22c55e":m.healCasts<=3?"#84cc16":"#eab308", fontWeight:700}}>
-                      {m.healCasts ?? "--"}
-                    </span>
-                  </span>
-                  <span><span style={{color:"#6b7280"}}>HEAL DMG: </span>{m.healDmgMin?.toFixed(0)}-{m.healDmgMax?.toFixed(0)}</span>
-                  <span><span style={{color:"#6b7280"}}>MP/CAST: </span><span style={{color:"#0ea5e9"}}>{m.healMpCost}</span>
-                    {mpEaterLvl > 0 && m.mp > 0 && (
-                      <span style={{color:"#60a5fa"}}> (net ~{m.healNetMp?.toFixed(1)} w/MPE, {(m.healAnyProc*100).toFixed(0)}% proc chance)</span>
-                    )}
-                  </span>
-                  <span><span style={{color:"#6b7280"}}>EXP/HR ({healTargets} undead/cast): </span>
-                    <span style={{color: m.healExpPerHour > m.expPerHour ? "#22c55e" : "#9ca3af", fontWeight:700}}>{formatExpPerHour(m.healExpPerHour)}</span>
-                    {m.healExpPerHour > m.expPerHour && <span style={{color:"#86efac"}}> ^ better than Magic Claw</span>}
-                  </span>
-                </div>
-              )}
-              {m.undead && healLvl === 0 && (
-                <div style={{ marginTop:6, fontSize:10, color:"#4b5563", fontStyle:"italic" }}>
-                  + Set Heal level above to see Heal combat stats
-                </div>
-              )}
               {/* Session profit panel */}
               <div style={{ marginTop:8, padding:"8px 10px", background:"#0d1117", borderRadius:4, border:"1px solid #21262d", fontSize:11 }}>
                 <div style={{ color:"#f59e0b", fontWeight:700, marginBottom:4, letterSpacing:1 }}>
                   SESSION PROFIT ({sessionMins}min)
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns: m.healSession ? "1fr 1fr" : "1fr", gap:"4px 16px" }}>
-                  <div>
-                    <div style={{ color:"#6b7280", fontSize:9, marginBottom:2, letterSpacing:1 }}>MAGIC CLAW ({MC_CAST_TIME_SEC}s/kill)</div>
-                    <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-                      <span><span style={{color:"#6b7280"}}>Kills: </span><span>{m.mcSession.kills.toLocaleString()}</span></span>
-                      <span><span style={{color:"#6b7280"}}>Pots: </span><span style={{color:"#f87171"}}>{m.mcSession.potCost.toLocaleString()}</span></span>
-                      <span><span style={{color:"#6b7280"}}>Income: </span><span style={{color:"#86efac"}}>{m.mcSession.income.toLocaleString()}</span></span>
-                      <span><span style={{color:"#6b7280"}}>Profit: </span>
-                        <span style={{color: m.mcSession.profit >= 0 ? "#22c55e" : "#ef4444", fontWeight:700}}>
-                          {m.mcSession.profit >= 0 ? "+" : ""}{m.mcSession.profit.toLocaleString()}
-                        </span>
+                <div>
+                  <div style={{ color:"#6b7280", fontSize:9, marginBottom:2, letterSpacing:1 }}>{activeSkill.label.toUpperCase()} ({activeSkill.castTimeSec}s/{isHeal ? "cast" : "kill"})</div>
+                  <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+                    <span><span style={{color:"#6b7280"}}>Kills: </span><span>{m.mcSession.kills.toLocaleString()}</span></span>
+                    <span><span style={{color:"#6b7280"}}>Pots: </span><span style={{color:"#f87171"}}>{m.mcSession.potCost.toLocaleString()}</span></span>
+                    <span><span style={{color:"#6b7280"}}>Income: </span><span style={{color:"#86efac"}}>{m.mcSession.income.toLocaleString()}</span></span>
+                    <span><span style={{color:"#6b7280"}}>Profit: </span>
+                      <span style={{color: m.mcSession.profit >= 0 ? "#22c55e" : "#ef4444", fontWeight:700}}>
+                        {m.mcSession.profit >= 0 ? "+" : ""}{m.mcSession.profit.toLocaleString()}
                       </span>
-                      <span style={{color:"#a78bfa", fontWeight:700}}>
-                        +{m.mcSession.levelsGained} lvl{m.mcSession.levelsGained !== 1 ? "s" : ""}
-                        {" "}{m.mcSession.leftoverPct.toFixed(2)}% into Lv{m.mcSession.finalLevel}
-                      </span>
-                    </div>
+                    </span>
+                    <span style={{color:"#a78bfa", fontWeight:700}}>
+                      +{m.mcSession.levelsGained} lvl{m.mcSession.levelsGained !== 1 ? "s" : ""}
+                      {" "}{m.mcSession.leftoverPct.toFixed(2)}% into Lv{m.mcSession.finalLevel}
+                    </span>
                   </div>
-                  {m.healSession && (
-                    <div>
-                      <div style={{ color:"#86efac", fontSize:9, marginBottom:2, letterSpacing:1 }}>HEAL x{healTargets} ({HEAL_CAST_TIME_SEC}s/cast)</div>
-                      <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-                        <span><span style={{color:"#6b7280"}}>Kills: </span><span>{m.healSession.kills.toLocaleString()}</span></span>
-                        <span><span style={{color:"#6b7280"}}>Pots: </span><span style={{color:"#f87171"}}>{m.healSession.potCost.toLocaleString()}</span></span>
-                        <span><span style={{color:"#6b7280"}}>Income: </span><span style={{color:"#86efac"}}>{m.healSession.income.toLocaleString()}</span></span>
-                        <span><span style={{color:"#6b7280"}}>Profit: </span>
-                          <span style={{color: m.healSession.profit >= 0 ? "#22c55e" : "#ef4444", fontWeight:700}}>
-                            {m.healSession.profit >= 0 ? "+" : ""}{m.healSession.profit.toLocaleString()}
-                          </span>
-                        </span>
-                        <span style={{color:"#a78bfa", fontWeight:700}}>
-                          +{m.healSession.levelsGained} lvl{m.healSession.levelsGained !== 1 ? "s" : ""}
-                          {" "}{m.healSession.leftoverPct.toFixed(2)}% into Lv{m.healSession.finalLevel}
-                        </span>
-                      </div>
-                    </div>
-                  )}
                 </div>
                 <div style={{ color:"#374151", fontSize:8, marginTop:4 }} title={m.incomeIsEstimated ? "No drop_data rows matched this monster -- using the dataset-wide average income/kill as a fallback" : "Mesos drop EV + sellable item/equip drop EV, from real drop tables + NPC sell prices"}>
                   ~{Math.round(m.incomePerKill)} mesos/kill (drop+etc+equip EV{m.incomeIsEstimated ? ", est." : ""}) x {POTIONS[potionKey || "bluePotion"].label}
@@ -569,24 +537,26 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                         <div style={{ background:"#0d1117", padding:"2px 5px", fontSize:9, color:"#9ca3af", maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={name}>
                           {name}
                         </div>
-                        {/* Auto-computed MC/Heal training scores, from Map.wz foothold geometry (see MAP_SCORES).
-                            mcScore/healScore already fold in the rope/ladder travel penalty and the
-                            low-spawn-supply penalty below -- mcScoreRaw/healScoreRaw are the pre-penalty
-                            geometry-only scores. */}
-                        {MAP_SCORES[mapId] && (
-                          <div style={{ display:"flex", gap:0 }}>
-                            <div style={{ background:scoreColor(MAP_SCORES[mapId].mcScore), color:"#000", fontSize:8, fontWeight:700, padding:"1px 5px", flex:1, textAlign:"center" }}
-                              title={MAP_SCORES[mapId].mcScoreRaw > MAP_SCORES[mapId].mcScore ? `${MAP_SCORES[mapId].mcScoreRaw}/5 before rope/ladder travel and low-spawn penalties` : undefined}>
-                              MC {MAP_SCORES[mapId].mcScore}/5
+                        {/* Auto-computed training score for the ACTIVE skill's own hitbox archetype
+                            (see classSkills.js's mapScoreArchetype/SCORE_FIELD and tools/
+                            extract_skill_map_scores.mjs) -- "ranged"/"melee" single-target skills
+                            get mcScore/meleeScore, same-platform AoE skills (Slash Blast, Somersault
+                            Kick, Thunder Bolt, etc.) get aoeScore, and Heal (the only skill whose box
+                            reaches adjacent floors) gets healScore. All 4 already fold in the rope/
+                            ladder travel penalty and the low-spawn-supply penalty below -- the *Raw
+                            fields are the pre-penalty geometry-only scores. */}
+                        {MAP_SCORES[mapId] && (() => {
+                          const field = SCORE_FIELD[activeSkill.mapScoreArchetype];
+                          const rawField = SCORE_FIELD_RAW[activeSkill.mapScoreArchetype];
+                          const score = MAP_SCORES[mapId][field];
+                          const raw = MAP_SCORES[mapId][rawField];
+                          return (
+                            <div style={{ background:scoreColor(score), color:"#000", fontSize:8, fontWeight:700, padding:"1px 5px", textAlign:"center" }}
+                              title={`${activeSkill.label} training score for this map${raw > score ? ` -- ${raw}/5 before rope/ladder travel and low-spawn penalties` : ""}`}>
+                              {SCORE_LABEL[activeSkill.mapScoreArchetype]} {score}/5
                             </div>
-                            {m.undead && (
-                              <div style={{ background:scoreColor(MAP_SCORES[mapId].healScore), color:"#000", fontSize:8, fontWeight:700, padding:"1px 5px", flex:1, textAlign:"center" }}
-                                title={MAP_SCORES[mapId].healScoreRaw > MAP_SCORES[mapId].healScore ? `${MAP_SCORES[mapId].healScoreRaw}/5 before rope/ladder travel and low-spawn penalties` : undefined}>
-                                HL {MAP_SCORES[mapId].healScore}/5
-                              </div>
-                            )}
-                          </div>
-                        )}
+                          );
+                        })()}
                         {/* Rope-heavy warning: flagged when the score above was actually docked for
                             forced rope/ladder travel between mob-bearing floors (see ropeCoverageRatio
                             in MAP_SCORES, tools/extract_rope_data.mjs) -- e.g. Dungeon: Damp Tree-Forest. */}
@@ -631,22 +601,53 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
 }
 
 export default function App() {
+  // -- Class/skill selection ---------------------------------------------------
+  // Which primary attacking skill the whole app's damage/kill/session math is
+  // driven by -- see src/lib/classSkills.js. Only skills with verified: true have
+  // a real formula; the rest are disabled in the selector rather than guessed.
+  const [activeSkillKey, setActiveSkillKey] = useState("magicClaw");
+  const activeSkill = SKILLS[activeSkillKey];
+
   // -- Configurable character panel ------------------------------------------
+  // str/dex feed the physical classes' skills (Power Strike, Slash Blast, Double
+  // Shot, Lucky Seven, Somersault Kick -- see classSkills.js), luk/int the magic
+  // ones (Magic Claw, Heal, Lucky Seven's LUK-primary claw). Every skill reads
+  // from the same CHAR object, so switching classes doesn't require re-plumbing.
   const [charLevel, setCharLevel] = useState(DEFAULT_CHAR.level);
+  const [charStr, setCharStr] = useState(DEFAULT_CHAR.str);
+  const [charDex, setCharDex] = useState(DEFAULT_CHAR.dex);
   const [charInt, setCharInt] = useState(DEFAULT_CHAR.int);
   const [charLuk, setCharLuk] = useState(DEFAULT_CHAR.luk);
-  const [charWeaponMatk, setCharWeaponMatk] = useState(DEFAULT_CHAR.weaponMatk);
+  const [charWeaponAtk, setCharWeaponAtk] = useState(DEFAULT_CHAR.weaponAtk);
   const [charMpMax, setCharMpMax] = useState(DEFAULT_CHAR.mpMax);
   const [charExpPct, setCharExpPct] = useState(DEFAULT_CHAR.expPct);
   const [charPanelOpen, setCharPanelOpen] = useState(false);
 
   // Derived char object used everywhere
   const CHAR = useMemo(() => ({
-    level: charLevel, int: charInt, luk: charLuk,
-    weaponMatk: charWeaponMatk, mpMax: charMpMax,
-  }), [charLevel, charInt, charLuk, charWeaponMatk, charMpMax]);
+    level: charLevel, str: charStr, dex: charDex, int: charInt, luk: charLuk,
+    weaponAtk: charWeaponAtk, mpMax: charMpMax,
+  }), [charLevel, charStr, charDex, charInt, charLuk, charWeaponAtk, charMpMax]);
 
-  const dmg = useMemo(() => calcDmg(CHAR.weaponMatk, CHAR.int), [CHAR]);
+  const isHeal = activeSkillKey === "heal";
+  const [healLvl, setHealLvl] = useState(0);
+  const [healTargets, setHealTargets] = useState(3);
+
+  // Heal's formula takes a skill level (healLvl, from its own slider below) in addition
+  // to stats, unlike every other skill's formula(stats)-only shape -- this wrapper binds
+  // healLvl so the rest of the app (dmg, oneshotLevel) can keep treating it generically.
+  const dmgFn = useMemo(
+    () => isHeal ? (stats => activeSkill.formula(stats, healLvl)) : activeSkill.formula,
+    [isHeal, activeSkill, healLvl]
+  );
+
+  // null when the active skill has no verified formula, or Heal is selected at level 0
+  // (unlearned) -- callers must handle this (the monster list shows nothing instead of
+  // guessing numbers for an uncast skill).
+  const dmg = useMemo(
+    () => (activeSkill.verified && !(isHeal && healLvl === 0)) ? dmgFn(CHAR) : null,
+    [CHAR, activeSkill, dmgFn, isHeal, healLvl]
+  );
 
   const [query, setQuery] = useState("");
   const [levelMin, setLevelMin] = useState(1);
@@ -660,8 +661,7 @@ export default function App() {
   const [hideRopeHeavy, setHideRopeHeavy] = useState(false); // hides monsters whose EVERY known spawn map is rope/ladder-heavy
   const [hideLowSpawn, setHideLowSpawn] = useState(false); // hides monsters whose EVERY known spawn map has low total mob supply
   const [hideUnreachable, setHideUnreachable] = useState(false); // hides monsters whose EVERY known spawn map has no portal-graph path from a town
-  const [minMcMapScore, setMinMcMapScore] = useState(0); // 0 = off; else hides monsters whose EVERY spawn map's mcScore is below this
-  const [minHealMapScore, setMinHealMapScore] = useState(0); // 0 = off; same but healScore, only meaningful for undead monsters
+  const [minMapScore, setMinMapScore] = useState(0); // 0 = off; else hides monsters whose EVERY spawn map's score (for the active skill's own archetype) is below this
   const [weakFilter, setWeakFilter] = useState(null); // e.g. "Fire", "Holy", "Lightning" -- exact match on m.weak
   const [effFilter, setEffFilter] = useState(null); // "low" | "mid" | "high" -- bucketed on m.ratio, matches effColor thresholds
   const [castsFilter, setCastsFilter] = useState(null); // [lo,hi] -- bucketed on m.hits (Magic Claw casts to kill)
@@ -669,18 +669,23 @@ export default function App() {
   const [sortDir, setSortDir] = useState(1); // 1 = ascending, -1 = descending
   const [selected, setSelected] = useState(null);
   const [worldMapMapId, setWorldMapMapId] = useState(null);
-  const [healLvl, setHealLvl] = useState(0);
-  const [healTargets, setHealTargets] = useState(3);
   const [mpEaterLvl, setMpEaterLvl] = useState(0);
   const [sessionMins, setSessionMins] = useState(60);
   const [potionKey, setPotionKey] = useState("bluePotion");
 
   const filtered = useMemo(() => {
+    // Selecting an unverified skill (see classSkills.js) means there's no trustworthy
+    // damage formula to compute anything from -- rather than guess, show nothing and
+    // let the "not yet supported" banner elsewhere in the UI explain why.
+    if (!dmg) return [];
     let list = MONSTER_DB.filter(m => {
       // Boss mobs are 1-spawn/long-respawn and aren't a viable grinding source, so
       // they're hidden by default -- toggling the chip flips to showing ONLY bosses,
       // rather than the usual "only"-filter semantics of the other Type chips.
       if (bossOnly ? !m.boss : m.boss) return false;
+      // Heal can only ever damage undead monsters -- this isn't a togglable preference
+      // like undeadOnly below, it's a hard game-mechanic constraint of the active skill.
+      if (isHeal && !UNDEAD_IDS.has(m.id)) return false;
       if (undeadOnly && !UNDEAD_IDS.has(m.id)) return false;
       if (autoOnly && !m.auto) return false;
       if (hideUnknownLoc && m.location === "Location unknown") return false;
@@ -703,64 +708,65 @@ export default function App() {
     });
     list = list.map(m => {
       const isUndead = UNDEAD_IDS.has(m.id);
-      // Magic Claw = 2 hits/cast, each hit rolled off calcDmg independently, so per-cast min damage is 2x a single hit's min
-      const hits = hitsToKill(m.hp, m.mDef, dmg.min * MC_HITS_PER_CAST);
-      const hCasts = isUndead ? healCastsToKill(m.hp, m.mDef, healLvl, CHAR.int, CHAR.luk, CHAR.weaponMatk) : null;
-      const hDmg = isUndead ? healDmg(healLvl, CHAR.int, CHAR.luk, CHAR.weaponMatk) : null;
-      // Efficiency ratio = actual casts needed to kill / total exp on offer -- lower is
-      // better (fewer casts per unit of exp). Deliberately NOT hp/exp: with MC/Heal both
-      // dealing far more damage than needed to kill a low-level mob, a tiny-hp/tiny-exp
-      // monster could look artificially "efficient" on a pure hp-based ratio even though
-      // a real, appropriately-leveled monster nets far more exp for the same 1 cast.
-      const hRatio = isUndead && hCasts != null ? hCasts / (m.exp * EXP_MULTI * Math.min(healTargets, 6)) : null;
-      // MP Eater: Heal fires once per target hit, Magic Claw fires 2 hits
-      const healMpReturn = hDmg ? mpEaterExpectedReturn(mpEaterLvl, m.mp, healTargets) : 0;
-      const mcMpReturn = mpEaterExpectedReturn(mpEaterLvl, m.mp, 2);
-      const healNetMp = hDmg ? netMpCost(hDmg.mpCost, healMpReturn) : null;
-      const mcNetMp = netMpCost(20, mcMpReturn);
-      const healAnyProc = mpEaterAnyProcChance(mpEaterLvl, healTargets);
-      const mcAnyProc = mpEaterAnyProcChance(mpEaterLvl, 2);
-      // Session profit
-      const mcKillsPerCast = 1;
+      // Elemental skills (Fire Arrow, Poison Breath, Cold Beam, Thunder Bolt) deal
+      // different damage PER MONSTER depending on that monster's own weak/strong/
+      // immune tags -- everything below this point uses mDmg (monster-adjusted), not
+      // the character-only `dmg` used for the top panel's class-level badges.
+      const mult = elementalMultiplier(activeSkill.element, m);
+      const mDmg = activeSkill.element ? scaleDamage(dmg, mult) : dmg;
+      // Each hit is rolled off the active skill's formula independently, so per-cast
+      // min damage is hitsPerCast x a single hit's min (matches Magic Claw's 2
+      // independently-rolled hits/cast; generalizes to any skill's own hit count).
+      const immune = mult === 0;
+      const hits = immune ? null : hitsToKill(m.hp, m.mDef, mDmg.min * activeSkill.hitsPerCast);
+      // Heal's MP cost depends on healLvl (29 + healLvl), already folded into dmg.mpCost
+      // by healDmg -- every other skill's cost is a flat per-character mpCost(CHAR).
+      const mpCostPerCast = isHeal ? dmg.mpCost : (activeSkill.mpCost ? activeSkill.mpCost(CHAR) : 20);
+      const mpReturn = mpEaterExpectedReturn(mpEaterLvl, m.mp, activeSkill.hitsPerCast);
+      const netMp = netMpCost(mpCostPerCast, mpReturn);
+      const anyProc = mpEaterAnyProcChance(mpEaterLvl, activeSkill.hitsPerCast);
       const mobIncomePerKill = incomePerKillFor(m.id);
-      const mcSession = sessionProfit(sessionMins, "mc", mcKillsPerCast, mcNetMp * hits, m.exp, CHAR.level, charExpPct, potionKey, CHAR.mpMax, mobIncomePerKill);
-      const healSession = isUndead && hDmg && healLvl > 0
-        ? sessionProfit(sessionMins, "heal", healTargets / (hCasts || 1), healNetMp ?? 0, m.exp, CHAR.level, charExpPct, potionKey, CHAR.mpMax, mobIncomePerKill)
-        : null;
-      const mcRatio = hits / (m.exp * EXP_MULTI);
-      // EXP/hr: the same casts-to-kill-per-exp math as *Ratio above, just inverted and
+      // Heal is a real fixed-radius AoE that can kill up to `healTargets` undead per
+      // successful cast (see the Undead Hit/Cast slider) -- every other skill here is
+      // still modeled as single-target-per-cast (Slash Blast/Somersault Kick's own
+      // multi-mob AoE isn't throughput-modeled yet, same gap noted in classSkills.js).
+      const killsPerCast = isHeal ? healTargets / (hits || 1) : 1;
+      const netMpPerSessionUnit = isHeal ? netMp : netMp * hits;
+      // Elemental immunity means this skill can never kill this monster -- session
+      // profit is a flat zero rather than running sessionProfit with a null hits.
+      const session = immune
+        ? { casts: 0, kills: 0, potCost: 0, income: 0, profit: 0, totalExp: 0, levelsGained: 0, leftoverPct: charExpPct, finalLevel: CHAR.level }
+        : sessionProfit(sessionMins, activeSkill.castTimeSec, killsPerCast, netMpPerSessionUnit, m.exp, CHAR.level, charExpPct, potionKey, CHAR.mpMax, mobIncomePerKill);
+      // Efficiency ratio = actual casts needed to kill / total exp on offer -- lower is
+      // better (fewer casts per unit of exp). Deliberately NOT hp/exp: with damage far
+      // exceeding what's needed to kill a low-level mob, a tiny-hp/tiny-exp monster
+      // could look artificially "efficient" on a pure hp-based ratio even though a
+      // real, appropriately-leveled monster nets far more exp for the same 1 cast.
+      const ratio = immune ? Infinity
+        : isHeal ? hits / (m.exp * EXP_MULTI * Math.min(healTargets, 6)) : hits / (m.exp * EXP_MULTI);
+      // EXP/hr: the same casts-to-kill-per-exp math as ratio above, just inverted and
       // scaled into an intuitive, higher-is-better unit for display -- "how much reward
       // am I actually getting" is a much clearer question than an abstract ratio number.
-      const mcExpPerHour = (m.exp * EXP_MULTI / hits) * (3600 / MC_CAST_TIME_SEC);
-      const healExpPerHour = (isUndead && hCasts) ? (m.exp * EXP_MULTI * Math.min(healTargets, 6) / hCasts) * (3600 / HEAL_CAST_TIME_SEC) : null;
+      const expPerHour = immune ? 0
+        : isHeal ? (m.exp * EXP_MULTI * Math.min(healTargets, 6) / hits) * (3600 / activeSkill.castTimeSec)
+        : (m.exp * EXP_MULTI / hits) * (3600 / activeSkill.castTimeSec);
       return {
         ...m,
         undead: isUndead,
         effHP: m.hp + m.mDef,
-        ratio: mcRatio,
-        // Efficiency ratio/expPerHour used for sorting/filtering/the main badge: Magic
-        // Claw by default (it only ever hits one target per cast), switching to the
-        // Heal figures only for undead monsters when Heal is actually selected --
-        // that's the only case where a single cast can hit multiple targets.
-        primaryRatio: (isUndead && healLvl > 0 && hRatio != null) ? hRatio : mcRatio,
-        primaryExpPerHour: (isUndead && healLvl > 0 && healExpPerHour != null) ? healExpPerHour : mcExpPerHour,
-        expPerHour: mcExpPerHour,
-        healExpPerHour,
+        ratio,
+        primaryRatio: ratio,
+        primaryExpPerHour: expPerHour,
+        expPerHour,
         hits,
-        oneshotLvl: oneshotLevel(m.hp, m.mDef, CHAR),
+        elementalMult: mult,
+        dmgMin: mDmg.min, dmgMax: mDmg.max,
+        oneshotLvl: immune ? null : oneshotLevel(m.hp, m.mDef, CHAR, activeSkill.apDistribution, stats => scaleDamage(dmgFn(stats), mult), activeSkill.hitsPerCast),
         exp2x: m.exp * EXP_MULTI,
-        healRatio: hRatio,
-        healCasts: hCasts,
-        healDmgMin: hDmg ? hDmg.min : null,
-        healDmgMax: hDmg ? hDmg.max : null,
-        healMpCost: hDmg ? hDmg.mpCost : null,
-        healMpReturn,
-        healNetMp,
-        healAnyProc,
-        mcNetMp,
-        mcAnyProc,
-        mcSession,
-        healSession,
+        mpCostPerCast,
+        mcNetMp: netMp,
+        mcAnyProc: anyProc,
+        mcSession: session,
         incomePerKill: mobIncomePerKill,
         incomeIsEstimated: MOB_INCOME_PER_KILL[m.id] === undefined,
         spawnMaps: spawnMapsFor(m.id),
@@ -798,23 +804,22 @@ export default function App() {
     if (hideUnreachable) {
       list = list.filter(m => !m.spawnMaps || !m.spawnMaps.length || !m.spawnMaps.every(s => isUnreachableMap(s.mapId)));
     }
-    // Map-quality score thresholds: hide a monster only if EVERY known spawn map's
-    // mcScore/healScore falls below the chosen minimum (1-5). Heal's threshold only
-    // applies to undead monsters -- healScore is meaningless for anything else.
-    if (minMcMapScore > 0) {
+    // Map-quality score threshold: hide a monster only if EVERY known spawn map's
+    // score for the ACTIVE skill's own hitbox archetype (see classSkills.js's
+    // mapScoreArchetype/SCORE_FIELD) falls below the chosen minimum (1-5). Heal
+    // (archetype "vertical") automatically only ever sees undead monsters here --
+    // the isHeal filter earlier already restricts the whole list to undead.
+    if (minMapScore > 0) {
+      const scoreField = SCORE_FIELD[activeSkill.mapScoreArchetype];
       list = list.filter(m => !m.spawnMaps || !m.spawnMaps.length ||
-        !m.spawnMaps.every(s => MAP_SCORES[s.mapId] && MAP_SCORES[s.mapId].mcScore < minMcMapScore));
-    }
-    if (minHealMapScore > 0) {
-      list = list.filter(m => !m.undead || !m.spawnMaps || !m.spawnMaps.length ||
-        !m.spawnMaps.every(s => MAP_SCORES[s.mapId] && MAP_SCORES[s.mapId].healScore < minHealMapScore));
+        !m.spawnMaps.every(s => MAP_SCORES[s.mapId] && MAP_SCORES[s.mapId][scoreField] < minMapScore));
     }
     if (sortBy === "efficiency") list.sort((a,b) => sortDir*(a.primaryRatio - b.primaryRatio));
     else if (sortBy === "level") list.sort((a,b) => sortDir*(a.level - b.level));
     else if (sortBy === "exp") list.sort((a,b) => sortDir*(a.exp2x - b.exp2x));
     else if (sortBy === "hp") list.sort((a,b) => sortDir*(a.hp - b.hp));
     return list;
-  }, [query, levelMin, levelMax, bossOnly, undeadOnly, autoOnly, hideUnknownLoc, hideNoMapData, hideRopeHeavy, hideLowSpawn, hideUnreachable, minMcMapScore, minHealMapScore, weakFilter, effFilter, castsFilter, zoneFilter, sortBy, sortDir, healLvl, healTargets, mpEaterLvl, sessionMins, potionKey, CHAR, dmg]);
+  }, [query, levelMin, levelMax, bossOnly, undeadOnly, autoOnly, hideUnknownLoc, hideNoMapData, hideRopeHeavy, hideLowSpawn, hideUnreachable, minMapScore, weakFilter, effFilter, castsFilter, zoneFilter, sortBy, sortDir, isHeal, healTargets, mpEaterLvl, sessionMins, potionKey, CHAR, dmg, dmgFn, activeSkill]);
 
   return (
     <div style={{ minHeight:"100vh", background:"#0d1117", fontFamily:"monospace", color:"#e2e8f0" }}>
@@ -835,16 +840,55 @@ export default function App() {
 
       <div style={{ maxWidth:900, margin:"0 auto", padding:"16px 12px" }}>
 
+        {/* Class / Skill selector -- drives AP distribution, damage formula, cast time,
+            and hits/targets-per-cast for everything below. See src/lib/classSkills.js:
+            only skills with a sourced + spot-checked formula are selectable. */}
+        <div style={{ marginBottom:12, padding:"10px 14px", border:"1px solid #30363d", borderRadius:8, background:"#161b22" }}>
+          <div style={{ fontSize:10, color:"#6b7280", letterSpacing:1, marginBottom:6 }}>CLASS / PRIMARY SKILL</div>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            {SKILL_LIST.map(s => (
+              <button key={s.key}
+                onClick={() => s.verified && setActiveSkillKey(s.key)}
+                disabled={!s.verified}
+                title={
+                  !s.verified ? `${s.label} (${s.job}) -- not yet supported: ${s.notes}`
+                  : s.notes ? `${s.label} -- ${s.job} -- ${s.notes}`
+                  : `${s.label} -- ${s.job}`
+                }
+                style={{
+                  background: activeSkillKey === s.key ? "#7c3aed22" : "#0d1117",
+                  border: `1px solid ${activeSkillKey === s.key ? "#7c3aed" : "#30363d"}`,
+                  borderRadius:4, padding:"3px 10px",
+                  color: !s.verified ? "#4b5563" : activeSkillKey === s.key ? "#a78bfa" : "#9ca3af",
+                  fontFamily:"inherit", fontSize:11, fontWeight: activeSkillKey === s.key ? 700 : 400,
+                  cursor: s.verified ? "pointer" : "not-allowed",
+                }}>
+                {s.label}{!s.verified ? " [soon]" : ""}
+              </button>
+            ))}
+          </div>
+          {!activeSkill.verified && (
+            <div style={{ marginTop:8, fontSize:11, color:"#f87171" }}>
+              {activeSkill.label} has no verified damage formula yet -- {activeSkill.notes}
+            </div>
+          )}
+          {isHeal && healLvl === 0 && (
+            <div style={{ marginTop:8, fontSize:11, color:"#eab308" }}>
+              Set Heal's skill level below to see monsters -- Heal only damages undead, and needs a level to compute its own damage.
+            </div>
+          )}
+        </div>
+
         {/* Character Panel */}
         <div style={{ marginBottom:12, border:"1px solid #30363d", borderRadius:8, overflow:"hidden" }}>
           <button onClick={()=>setCharPanelOpen(o=>!o)}
             style={{ width:"100%", background:"#161b22", border:"none", padding:"10px 14px", color:"#e2e8f0", fontFamily:"monospace", fontSize:12, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8, textAlign:"left" }}>
             <span style={{ fontWeight:700, letterSpacing:1, color:"#a78bfa" }}>CHARACTER Lv{CHAR.level} {charPanelOpen ? "[close]" : "[edit]"}</span>
             <span style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-              {badge("INT", CHAR.int, "#6366f1")}
-              {badge("M.ATT", CHAR.weaponMatk, "#8b5cf6")}
-              {badge("MIN/HIT", dmg.min.toFixed(0), "#14532d", "#86efac")}
-              {badge("MAX/HIT", dmg.max.toFixed(0), "#14532d", "#4ade80")}
+              {badge(activeSkill.apDistribution.primaryStat.toUpperCase(), CHAR[activeSkill.apDistribution.primaryStat], "#6366f1")}
+              {badge("W.ATT", CHAR.weaponAtk, "#8b5cf6")}
+              {dmg && badge("MIN/HIT", dmg.min.toFixed(0), "#14532d", "#86efac")}
+              {dmg && badge("MAX/HIT", dmg.max.toFixed(0), "#14532d", "#4ade80")}
               {badge("MP", CHAR.mpMax, "#0369a1")}
               {badge("EXP", `${charExpPct.toFixed(2)}%`, "#facc15")}
             </span>
@@ -853,9 +897,11 @@ export default function App() {
             <div style={{ background:"#0d1117", padding:"12px 14px", display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"10px 16px" }}>
               {[
                 ["Level", charLevel, setCharLevel, 1, 70, 1],
+                ["STR", charStr, setCharStr, 4, 999, 1],
+                ["DEX", charDex, setCharDex, 4, 999, 1],
                 ["INT", charInt, setCharInt, 10, 999, 1],
                 ["LUK", charLuk, setCharLuk, 4, 999, 1],
-                ["Weapon M.ATT", charWeaponMatk, setCharWeaponMatk, 0, 200, 1],
+                ["Weapon Attack", charWeaponAtk, setCharWeaponAtk, 0, 200, 1],
                 ["Max MP", charMpMax, setCharMpMax, 100, 30000, 10],
                 ["Current EXP %", charExpPct, setCharExpPct, 0, 99.99, 0.01],
               ].map(([label, val, setter, min, max, step]) => (
@@ -866,16 +912,16 @@ export default function App() {
                     style={{ width:"100%", background:"#161b22", border:"1px solid #30363d", borderRadius:4, padding:"4px 8px", color:"#e2e8f0", fontFamily:"monospace", fontSize:12, boxSizing:"border-box" }} />
                 </div>
               ))}
-              <div style={{ gridColumn:"1/-1", display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ gridColumn:"1/-1", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
                 <button onClick={() => {
-                  setCharLevel(DEFAULT_CHAR.level); setCharInt(DEFAULT_CHAR.int);
-                  setCharLuk(DEFAULT_CHAR.luk); setCharWeaponMatk(DEFAULT_CHAR.weaponMatk);
+                  setCharLevel(DEFAULT_CHAR.level); setCharStr(DEFAULT_CHAR.str); setCharDex(DEFAULT_CHAR.dex);
+                  setCharInt(DEFAULT_CHAR.int); setCharLuk(DEFAULT_CHAR.luk); setCharWeaponAtk(DEFAULT_CHAR.weaponAtk);
                   setCharMpMax(DEFAULT_CHAR.mpMax); setCharExpPct(DEFAULT_CHAR.expPct);
                 }} style={{ background:"#21262d", border:"1px solid #30363d", borderRadius:4, padding:"4px 12px", color:"#9ca3af", fontFamily:"monospace", fontSize:11, cursor:"pointer" }}>
                   Reset to defaults
                 </button>
                 <span style={{ fontSize:10, color:"#4b5563" }}>
-                  Projections assume +{INT_PER_LEVEL} INT / +{LUK_PER_LEVEL} LUK per level-up
+                  Projections assume +{activeSkill.apDistribution.primaryPerLevel} {activeSkill.apDistribution.primaryStat.toUpperCase()} / +{activeSkill.apDistribution.secondaryPerLevel} {activeSkill.apDistribution.secondaryStat.toUpperCase()} per level-up ({activeSkill.label})
                 </span>
               </div>
             </div>
@@ -905,20 +951,8 @@ export default function App() {
           </button>
         </div>
 
-        {/* Heal controls */}
+        {/* General controls -- apply to whichever skill is active, not Heal-specific */}
         <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:12, padding:"10px 12px", background:"#161b22", border:"1px solid #21262d", borderRadius:6 }}>
-          <span style={{ fontSize:11, color:"#86efac", fontWeight:700, letterSpacing:1 }}>+ HEAL</span>
-          <FilterRow label="Skill Lv">
-            <input type="range" min={0} max={30} value={healLvl} onChange={e=>setHealLvl(+e.target.value)}
-              style={{ width:100, accentColor:"#86efac" }} />
-            <span style={{ color:"#86efac", fontWeight:700, minWidth:20 }}>{healLvl}</span>
-            <span style={{ color:"#4b5563", fontSize:11 }}>({healLvl===0?"disabled":`${healLvl*15}% x ${29+healLvl} MP`})</span>
-          </FilterRow>
-          <FilterRow label="Undead Hit / Cast" hint='How many undead a single Heal cast kills -- affects kill throughput (exp/kills per cast, MP Eater proc rolls) only. Per-target Heal damage itself is fixed at a 6.5x multiplier (solo play, no party) -- see the "Heal dmg vs undead" line below.'>
-            <input type="range" min={1} max={6} value={healTargets} onChange={e=>setHealTargets(+e.target.value)}
-              style={{ width:80, accentColor:"#86efac" }} />
-            <span style={{ color:"#86efac", fontWeight:700 }}>{healTargets}</span>
-          </FilterRow>
           <FilterRow label="MP Eater Lv">
             <input type="range" min={0} max={20} value={mpEaterLvl} onChange={e=>setMpEaterLvl(+e.target.value)}
               style={{ width:80, accentColor:"#60a5fa" }} />
@@ -940,12 +974,30 @@ export default function App() {
               ))}
             </select>
           </FilterRow>
-          {healLvl > 0 && (
-            <div style={{ fontSize:11, color:"#4b5563" }}>
-              Heal dmg vs undead: <span style={{ color:"#86efac" }}>{healDmg(healLvl, CHAR.int, CHAR.luk, CHAR.weaponMatk).min.toFixed(0)}</span>-<span style={{ color:"#86efac" }}>{healDmg(healLvl, CHAR.int, CHAR.luk, CHAR.weaponMatk).max.toFixed(0)}</span> per target
-            </div>
-          )}
         </div>
+
+        {/* Heal-only controls -- only meaningful, and only shown, when Heal is the active skill */}
+        {isHeal && (
+          <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:12, padding:"10px 12px", background:"#161b22", border:"1px solid #21262d", borderRadius:6 }}>
+            <span style={{ fontSize:11, color:"#86efac", fontWeight:700, letterSpacing:1 }}>+ HEAL</span>
+            <FilterRow label="Skill Lv">
+              <input type="range" min={0} max={30} value={healLvl} onChange={e=>setHealLvl(+e.target.value)}
+                style={{ width:100, accentColor:"#86efac" }} />
+              <span style={{ color:"#86efac", fontWeight:700, minWidth:20 }}>{healLvl}</span>
+              <span style={{ color:"#4b5563", fontSize:11 }}>({healLvl===0?"disabled":`${healLvl*15}% x ${29+healLvl} MP`})</span>
+            </FilterRow>
+            <FilterRow label="Undead Hit / Cast" hint='How many undead a single Heal cast kills -- affects kill throughput (exp/kills per cast, MP Eater proc rolls) only. Per-target Heal damage itself is fixed at a 6.5x multiplier (solo play, no party) -- see the "Heal dmg vs undead" line below.'>
+              <input type="range" min={1} max={6} value={healTargets} onChange={e=>setHealTargets(+e.target.value)}
+                style={{ width:80, accentColor:"#86efac" }} />
+              <span style={{ color:"#86efac", fontWeight:700 }}>{healTargets}</span>
+            </FilterRow>
+            {healLvl > 0 && (
+              <div style={{ fontSize:11, color:"#4b5563" }}>
+                Heal dmg vs undead: <span style={{ color:"#86efac" }}>{healDmg(healLvl, CHAR.int, CHAR.luk, CHAR.weaponAtk).min.toFixed(0)}</span>-<span style={{ color:"#86efac" }}>{healDmg(healLvl, CHAR.int, CHAR.luk, CHAR.weaponAtk).max.toFixed(0)}</span> per target
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Quick filters -- grouped by category, each its own labeled row */}
         <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:16 }}>
@@ -1035,18 +1087,21 @@ export default function App() {
             </button>
           </FilterRow>
 
-          <FilterRow label="Min Map Score" hint="Hides a monster only if EVERY known spawn map scores below this for the given skill (1-5, 0=off). Heal threshold only applies to undead monsters.">
-            <span style={{ fontSize:10, color:"#6b7280" }}>MC</span>
-            <select value={minMcMapScore} onChange={e=>setMinMcMapScore(+e.target.value)}
-              style={{ background:"#161b22", border:"1px solid #30363d", borderRadius:4, color:"#e2e8f0", fontFamily:"inherit", fontSize:11, padding:"2px 4px" }}>
-              <option value={0}>off</option>
-              {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}+</option>)}
-            </select>
-            <span style={{ fontSize:10, color:"#6b7280", marginLeft:8 }}>Heal</span>
-            <select value={minHealMapScore} onChange={e=>setMinHealMapScore(+e.target.value)}
-              style={{ background:"#161b22", border:"1px solid #30363d", borderRadius:4, color:"#e2e8f0", fontFamily:"inherit", fontSize:11, padding:"2px 4px" }}>
-              <option value={0}>off</option>
-              {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}+</option>)}
+          <FilterRow label="Min Map Score" hint={`Hides a monster only if EVERY known spawn map scores below this (1=red/worst - 5=green/best, 0=off) for ${activeSkill.label}'s own hitbox archetype (${SCORE_LABEL[activeSkill.mapScoreArchetype]} -- see classSkills.js mapScoreArchetype).`}>
+            <span style={{ fontSize:10, color:"#6b7280" }}>{SCORE_LABEL[activeSkill.mapScoreArchetype]}</span>
+            <select value={minMapScore} onChange={e=>setMinMapScore(+e.target.value)}
+              style={{
+                background:"#161b22",
+                border:`1px solid ${minMapScore > 0 ? scoreColor(minMapScore) : "#30363d"}`,
+                borderRadius:4, color: minMapScore > 0 ? scoreColor(minMapScore) : "#e2e8f0",
+                fontFamily:"inherit", fontSize:11, fontWeight: minMapScore > 0 ? 700 : 400, padding:"2px 4px",
+              }}>
+              <option value={0} style={{ color:"#9ca3af", background:"#161b22" }}>off</option>
+              {[1,2,3,4,5].map(n => (
+                <option key={n} value={n} style={{ color:scoreColor(n), background:"#161b22", fontWeight:700 }}>
+                  {n}+ {n===1?"(red/worst)":n===5?"(green/best)":""}
+                </option>
+              ))}
             </select>
           </FilterRow>
 
@@ -1074,7 +1129,7 @@ export default function App() {
           overscan={6}
           renderItem={(m, i) => (
             <MonsterCard key={m.id} m={m} i={i} selected={selected} setSelected={setSelected}
-              setWorldMapMapId={setWorldMapMapId} CHAR={CHAR} dmg={dmg} healLvl={healLvl}
+              setWorldMapMapId={setWorldMapMapId} CHAR={CHAR} dmg={dmg} activeSkill={activeSkill} isHeal={isHeal}
               healTargets={healTargets} mpEaterLvl={mpEaterLvl} sessionMins={sessionMins} potionKey={potionKey} />
           )}
         />
@@ -1082,7 +1137,11 @@ export default function App() {
 
         {filtered.length === 0 && (
           <div style={{ textAlign:"center", padding:"40px 0", color:"#6b7280", fontSize:13 }}>
-            No monsters match your filters.
+            {!activeSkill.verified
+              ? `${activeSkill.label} has no verified damage formula yet, so there's nothing to rank. Pick a verified skill above to see monsters.`
+              : isHeal && healLvl === 0
+              ? "Set Heal's skill level below to see monsters."
+              : "No monsters match your filters."}
           </div>
         )}
 
