@@ -1,3 +1,6 @@
+// SUPERSEDED by tools/recompute_map_scores.mjs -- see README.md "Map-quality
+// scoring" for the gap-size-aware replacement of this exact penalty.
+//
 // Merge tools/rope_analysis.json (produced by extract_rope_data.mjs) into
 // public/data/mapScores.js: keeps the original geometry-only mcScore/healScore
 // as mcScoreRaw/healScoreRaw, and overwrites mcScore/healScore with the
