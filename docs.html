@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MapleStory Monster DB -- Docs &amp; How-To</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin:0; padding:0; background:#0d1117; color:#e2e8f0; font-family:'SF Mono','Fira Code',Consolas,monospace; line-height:1.6; }
+  a { color:#a78bfa; }
+  a:hover { color:#c4b5fd; }
+  .header { background:linear-gradient(180deg,#1a0a2e,#0d1117); border-bottom:2px solid #7c3aed; padding:16px 20px 12px; }
+  .header-inner { max-width:820px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .title { font-size:18px; font-weight:700; color:#a78bfa; letter-spacing:1px; }
+  .subtitle { font-size:10px; color:#6b7280; letter-spacing:2px; margin-top:2px; }
+  .back-link { font-size:11px; border:1px solid #30363d; border-radius:4px; padding:5px 12px; text-decoration:none; background:#161b22; white-space:nowrap; }
+  main { max-width:820px; margin:0 auto; padding:24px 16px 60px; }
+  h2 { color:#a78bfa; font-size:15px; letter-spacing:1px; border-bottom:1px solid #21262d; padding-bottom:6px; margin-top:36px; }
+  h2:first-of-type { margin-top:0; }
+  h3 { color:#86efac; font-size:12.5px; letter-spacing:0.5px; margin-top:20px; margin-bottom:6px; }
+  p, li { font-size:12.5px; color:#c9d1d9; }
+  code { background:#161b22; border:1px solid #21262d; border-radius:3px; padding:1px 5px; font-size:11.5px; color:#f0abfc; }
+  .badge { display:inline-block; font-size:9px; font-weight:700; letter-spacing:0.5px; padding:1px 7px; border-radius:3px; margin-right:4px; }
+  .b-purple { background:#7c3aed22; color:#a78bfa; border:1px solid #7c3aed; }
+  .b-green { background:#14532d; color:#86efac; }
+  .b-red { background:#3a1212; color:#f87171; }
+  .b-amber { background:#3a2412; color:#f59e0b; }
+  .card { background:#161b22; border:1px solid #21262d; border-radius:6px; padding:12px 16px; margin:10px 0; }
+  .note { border-left:3px solid #60a5fa; background:#0d1117; padding:8px 12px; font-size:11.5px; color:#9ca3af; margin:10px 0; }
+  .warn { border-left:3px solid #f59e0b; background:#0d1117; padding:8px 12px; font-size:11.5px; color:#fbbf24; margin:10px 0; }
+  table { border-collapse:collapse; width:100%; font-size:11.5px; margin:10px 0; }
+  th, td { text-align:left; padding:5px 10px; border-bottom:1px solid #21262d; }
+  th { color:#6b7280; font-weight:400; letter-spacing:0.5px; font-size:10px; text-transform:uppercase; }
+  .grad { color:#ef4444; }
+  .grad2 { color:#f97316; } .grad3 { color:#eab308; } .grad4 { color:#84cc16; } .grad5 { color:#22c55e; }
+  footer { max-width:820px; margin:0 auto; padding:20px 16px 40px; font-size:10px; color:#374151; text-align:center; border-top:1px solid #21262d; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <div class="title">[Shroom] MAPLESTORY MONSTER DB -- DOCS &amp; HOW-TO</div>
+      <div class="subtitle">v62 pre-Big-Bang training-spot toolkit</div>
+    </div>
+    <a class="back-link" href="./">&larr; Back to the app</a>
+  </div>
+</div>
+
+<main>
+
+<p>This page explains what the tool does and how to use every panel. It's a
+user-facing guide -- for the data-sourcing methodology (what's verified
+against real v62 Skill.wz/Item.wz data vs. estimated) see the
+<a href="https://github.com/imbinarysunshine/ms_optimizer#readme">project README</a>.</p>
+
+<h2>What this is</h2>
+<p>A calculator for evaluating MapleStory (classic, pre-Big-Bang v62) training
+spots: pick your class and skill, enter your stats, and the monster list
+ranks every monster by realistic EXP/hour and mesos/hour -- accounting for
+how many casts it actually takes to kill something, MP (and optionally HP)
+potion costs, and how good each monster's spawn map actually is for your
+specific skill's hitbox.</p>
+
+<h2>Class &amp; Skill selection</h2>
+<p>At the top of the app: a row of class chips (<span class="badge b-purple">Warrior</span>
+<span class="badge b-purple">Magician</span> <span class="badge b-purple">Bowman</span>
+<span class="badge b-purple">Thief</span> <span class="badge b-purple">Pirate</span>) plus
+<span class="badge b-purple">Show All Skills</span>. Clicking a class chip narrows the skill
+row below it to just that class's kit -- e.g. clicking Thief shows only Lucky Seven, Drain,
+and Savage Blow. This is a display filter only: it doesn't change which skill is currently
+active, so you can browse a class's options without losing your place.</p>
+<p>The skill row itself is what actually drives every number on the page -- damage formula,
+MP cost, cast time, and hits/targets per cast are all specific to whichever skill chip is
+selected (highlighted purple). Every selectable skill has a real, sourced v62 formula behind
+it (mostly straight from a Skill.wz data dump); a skill shown greyed-out with <code>[soon]</code>
+has no verified formula yet and can't be selected.</p>
+<div class="note">Heal (Cleric) is a normal skill choice like any other -- select it to see
+its own damage/cast numbers. Its own controls (skill level, undead-per-cast) only appear
+below once Heal is the active skill.</div>
+
+<h2>Character panel</h2>
+<p>Click <code>CHARACTER Lv.. [edit]</code> to expand your stat inputs: Level, STR/DEX/INT/LUK,
+Weapon Attack, Max MP, Max HP, and Defense. These feed directly into the active skill's damage
+formula and into the incoming-damage estimate (see "Take Damage" below). "Reset to defaults"
+restores the app's baseline test character.</p>
+
+<h2>Combat stats (per monster)</h2>
+<table>
+<tr><th>Field</th><th>Meaning</th></tr>
+<tr><td>CASTS</td><td>How many casts of your active skill it takes to kill this monster. 1 = one-shot.</td></tr>
+<tr><td>YOUR DMG</td><td>Your damage range per cast (and per individual hit, if the skill fires
+multiple hits/bullets per cast).</td></tr>
+<tr><td>MP/KILL</td><td>Total MP spent killing one of this monster, net of MP Eater's expected
+return if you've set an MP Eater level.</td></tr>
+<tr><td>ONE-SHOT @</td><td>The character level at which your current build would one-shot this
+monster, if you're not one-shotting it already.</td></tr>
+</table>
+<p>If the monster has an elemental weakness/resistance/immunity and your active skill is
+elemental (Fire Arrow, Poison Breath, Cold Beam, Thunder Bolt), damage is automatically scaled
+(1.5x weak, 0.5x resist, 0x immune) and shown next to YOUR DMG.</p>
+
+<h2>Filters</h2>
+<p>Search by name/location/element, level range, and a row of type toggles (Boss/Undead/Auto).
+"Hide Rope-Heavy Maps" and "Hide Low-Spawn Maps" hide a monster only if <em>every</em> one of
+its known spawn maps has that problem -- a monster with even one good map stays visible. Zone,
+elemental-weakness, and efficiency-tier dropdowns narrow further. "Min Map Score" (see below)
+filters on the active skill's own map-quality score.</p>
+
+<h2>General controls</h2>
+<h3>MP Eater</h3>
+<p>Models the passive's chance-based MP return per hit against the target monster's own MP pool
+-- 0 disables it.</p>
+<h3>Session &amp; Potion</h3>
+<p>Session length (minutes) and which MP potion you'd buy -- both feed the Session Profit panel
+on every monster card.</p>
+<h3>Take Damage <span class="badge b-purple">ON by default</span></h3>
+<p>Models incoming damage from the monster and the HP potions needed to sustain it: roughly one
+hit every "Hit Interval" seconds (3-5s, adjustable) for <code>max(1, monster W.ATK - your
+Defense)</code> each time. Warriors are melee and always effectively in range for this; other
+classes only take it if you expect to be mobbed or pulling AoE packs. Turn it off to model
+taking no damage at all. When on, pick which HP potion you'd buy.</p>
+<div class="warn">This is an explicit <strong>estimate</strong>, not a sourced hit-chance/defense
+formula -- real MapleStory accuracy/avoidability and defense mechanics weren't reverse-engineered
+for this. Treat the resulting HP-potion numbers as a reasonable approximation, not gospel.</div>
+<h3>Magic Guard <span class="badge b-purple">Magician skills only</span></h3>
+<p>Only appears when a Magician skill is active and Take Damage is on. Magic Guard converts a %
+of incoming damage into MP loss instead of HP loss (2% per level, capping at 40% at level 20) --
+sourced directly from v62 skill data. Raising the slider trades HP-potion cost for MP-potion
+cost; because MP potions and HP potions have different mesos-per-point-restored rates, this can
+raise or lower your total session cost depending on which potions you've selected.</p>
+
+<h2>Session Profit panel (per monster)</h2>
+<p>Projects a full session at your chosen length: total kills, potion cost (split into MP and,
+when relevant, HP pots), mesos income (from real per-monster drop tables, not a flat constant),
+net profit, and levels/EXP gained.</p>
+
+<h2>Map training scores</h2>
+<p>Every monster's known spawn maps get a 1-5 score, colored on a genuine red-to-green gradient
+(<span class="grad">&#9632;</span><span class="grad2">&#9632;</span><span class="grad3">&#9632;</span><span class="grad4">&#9632;</span><span class="grad5">&#9632;</span>
+1=worst, 5=best) -- which score you see depends on your active skill's own hitbox shape:</p>
+<table>
+<tr><th>Badge</th><th>Applies to</th><th>Rewards</th></tr>
+<tr><td>RANGE</td><td>Ranged single-target skills (Magic Claw, Double Shot, Lucky Seven, Drain, elemental spells, etc.)</td><td>Long platforms, few floors, good mob density</td></tr>
+<tr><td>MELEE</td><td>Short-reach single-target skills (Power Strike, Double Uppercut)</td><td>Same shape as RANGE with a much shorter reach constant</td></tr>
+<tr><td>AOE</td><td>Same-platform multi-mob skills (Slash Blast, Somersault Kick, Thunder Bolt, etc.)</td><td>Mobs clumped tightly on one platform (or a close neighboring one)</td></tr>
+<tr><td>STACK</td><td>Heal only</td><td>Platforms stacked close together vertically -- Heal's box is wide enough to hit several floors in one cast</td></tr>
+</table>
+<p>Two independent penalties can dock a map's score: a <span class="badge b-amber">ROPE-HEAVY</span>
+badge (real rope/ladder travel tedium between farming floors) and a <span class="badge b-red">LOW SPAWN</span>
+badge (too few monsters alive at once to sustain continuous farming). A
+<span class="badge b-amber">NO PORTAL PATH</span> badge means the portal graph couldn't confirm a
+walkable route from any town -- a strong signal, not certainty (NPC-dialogue-triggered maps like
+most Party Quests have no portal edge at all and will show this even though they're real content).</p>
+
+<h2>Map view</h2>
+<p>Click a spawn-map thumbnail to expand it: toggle overlays for real monster spawn points
+("Mob Spawns"), rope/ladder segments, and clickable portals (jump to the target map without
+closing the modal; "Back" retraces your steps). The world-map view shows the same map's
+position on its regional overview.</p>
+
+<h2>Data accuracy, in short</h2>
+<ul>
+<li><span class="badge b-green">STATS VERIFIED</span> monsters were individually spot-checked
+against a second source; <span class="badge b-amber">NORMAL</span> monsters come from the same
+verified dump but weren't individually re-checked.</li>
+<li>Every selectable skill's damage formula is sourced from real v62 Skill.wz data or a
+verified v62-era private-server implementation -- not guessed.</li>
+<li>Incoming damage/HP-potion modeling (see "Take Damage" above) and map-quality scoring
+constants are clearly-labeled estimates/community-standard values, not individually
+wz-verified the same way skill damage is.</li>
+</ul>
+
+</main>
+
+<footer>
+  MapleStory Monster DB -- <a href="./">back to the app</a> --
+  <a href="https://github.com/imbinarysunshine/ms_optimizer">source on GitHub</a>
+</footer>
+
+</body>
+</html>
