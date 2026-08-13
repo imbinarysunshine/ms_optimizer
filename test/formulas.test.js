@@ -9,6 +9,7 @@ import {
   physicalBaseDamage, physicalSkillDamage, WEAPON_MULTIPLIERS,
   magicSkillDamage, elementalMultiplier, scaleDamage, ELEMENTAL_MULTIPLIER,
   HP_POTIONS, incomingDamagePerHit, hpLossPerSecond, isSuspiciousPotionPrice,
+  MAGIC_GUARD_LEVELS, magicGuardPct, applyMagicGuard,
 } from "../src/lib/formulas";
 import { SKILLS } from "../src/lib/classSkills";
 import { EXP_TABLE } from "../src/data/expTable";
@@ -712,5 +713,81 @@ describe("sessionProfit with HP potion params", () => {
     const known = sessionProfit(...base, 7.5, "orangePotion", 400);
     const unknown = sessionProfit(...base, 7.5, "not-a-real-potion", 400);
     expect(unknown).toEqual(known);
+  });
+
+  it("extraMpLossPerSec (Magic Guard) adds mpPotCost without touching hpPotCost", () => {
+    const withoutMg = sessionProfit(...base, 7.5, "orangePotion", 400);
+    const withMg = sessionProfit(...base, 7.5, "orangePotion", 400, 3);
+    expect(withMg.hpPotCost).toBe(withoutMg.hpPotCost); // HP side untouched by this param
+    expect(withMg.mpPotCost).toBeGreaterThan(withoutMg.mpPotCost);
+    expect(withMg.potCost).toBe(withMg.mpPotCost + withMg.hpPotCost);
+  });
+});
+
+// Magic Guard -- v62 Skill.wz id 2001003, Magician 1st job (any branch).
+// Converts a % of incoming damage into MP loss instead of HP loss.
+describe("magicGuardPct", () => {
+  it("is exactly level*2, capping at 40% (the real Lv20 max)", () => {
+    expect(magicGuardPct(1)).toBe(2);
+    expect(magicGuardPct(10)).toBe(20);
+    expect(magicGuardPct(20)).toBe(40);
+  });
+
+  it("is 0 when unlearned", () => {
+    expect(magicGuardPct(0)).toBe(0);
+  });
+});
+
+describe("MAGIC_GUARD_LEVELS", () => {
+  it("has an entry for every level 1-20 with a positive mpCon and duration", () => {
+    for (let lvl = 1; lvl <= 20; lvl++) {
+      const e = MAGIC_GUARD_LEVELS[lvl];
+      expect(e).toBeTruthy();
+      expect(e.mpCon).toBeGreaterThan(0);
+      expect(e.duration).toBeGreaterThan(0);
+    }
+  });
+
+  it("matches the sourced Lv1/Lv20 wz values exactly", () => {
+    expect(MAGIC_GUARD_LEVELS[1]).toEqual({ mpCon: 8, duration: 54 });
+    expect(MAGIC_GUARD_LEVELS[20]).toEqual({ mpCon: 16, duration: 400 });
+  });
+});
+
+describe("applyMagicGuard", () => {
+  it("does nothing (passes hpLossPerSec through, no extra MP) when Magic Guard is unlearned", () => {
+    const r = applyMagicGuard(10, 0);
+    expect(r.hpLossPerSec).toBe(10);
+    expect(r.extraMpLossPerSec).toBe(0);
+  });
+
+  it("does nothing when there's no incoming damage to begin with", () => {
+    const r = applyMagicGuard(0, 20);
+    expect(r.hpLossPerSec).toBe(0);
+    expect(r.extraMpLossPerSec).toBe(0);
+  });
+
+  it("converts exactly pct% of hpLossPerSec to extraMpLossPerSec at Lv20 (40%)", () => {
+    const r = applyMagicGuard(10, 20);
+    expect(r.hpLossPerSec).toBeCloseTo(6, 10); // 60% remains as HP loss
+    // extraMpLossPerSec = converted damage (4) + amortized recast cost (16/400 = 0.04)
+    expect(r.extraMpLossPerSec).toBeCloseTo(4 + 16 / 400, 10);
+  });
+
+  it("reduces HP loss and increases MP loss monotonically with level", () => {
+    const lv10 = applyMagicGuard(10, 10);
+    const lv20 = applyMagicGuard(10, 20);
+    expect(lv20.hpLossPerSec).toBeLessThan(lv10.hpLossPerSec);
+    expect(lv20.extraMpLossPerSec).toBeGreaterThan(lv10.extraMpLossPerSec);
+  });
+
+  it("hpLossPerSec + (extraMpLossPerSec minus the recast-cost component) accounts for all original damage", () => {
+    // sanity check: the damage-conversion portion alone (excluding the separate
+    // recast-cost drain) should exactly complement the remaining HP loss
+    const hpLossPerSec = 10, lvl = 15;
+    const r = applyMagicGuard(hpLossPerSec, lvl);
+    const recastPerSec = MAGIC_GUARD_LEVELS[lvl].mpCon / MAGIC_GUARD_LEVELS[lvl].duration;
+    const convertedDamage = r.extraMpLossPerSec - recastPerSec;
+    expect(r.hpLossPerSec + convertedDamage).toBeCloseTo(hpLossPerSec, 10);
   });
 });
