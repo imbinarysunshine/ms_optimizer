@@ -101,6 +101,11 @@ export function spawnMapsFor(monsterId) {
   return null;
 }
 const layoutIcon = l => l === "flat" ? "[=]" : l === "tiered" ? "[~]" : l === "vertical" ? "[|]" : "[?]";
+// Distinct classes present in the skill registry, in a fixed display order
+// (matches the classic job-tab ordering) -- drives the "class selection"
+// filter chips above the skill row (see CLASS / PRIMARY SKILL below).
+const CLASS_LIST = ["warrior", "magician", "bowman", "thief", "pirate"];
+const CLASS_LABEL = { warrior: "Warrior", magician: "Magician", bowman: "Bowman", thief: "Thief", pirate: "Pirate" };
 // Mirrors the ROPE-HEAVY / LOW SPAWN badge conditions in the spawn-map list below --
 // used by the "Hide Rope-Heavy Maps" / "Hide Low-Spawn Maps" filter chips.
 export function isRopeHeavyMap(mapId) {
@@ -611,6 +616,12 @@ export default function App() {
   // driven by -- see src/lib/classSkills.js. Only skills with verified: true have
   // a real formula; the rest are disabled in the selector rather than guessed.
   const [activeSkillKey, setActiveSkillKey] = useState("magicClaw");
+  // null = "Show All Skills" (every class's chips shown at once, the original
+  // behavior); otherwise one of CLASS_LIST below, narrowing the skill row to
+  // just that class's chips. Purely a display filter -- it doesn't change
+  // activeSkillKey itself, so switching class filters never surprises you by
+  // silently swapping which skill's damage math is currently driving the list.
+  const [classFilter, setClassFilter] = useState(null);
   const activeSkill = SKILLS[activeSkillKey];
 
   // -- Configurable character panel ------------------------------------------
@@ -862,11 +873,39 @@ export default function App() {
 
         {/* Class / Skill selector -- drives AP distribution, damage formula, cast time,
             and hits/targets-per-cast for everything below. See src/lib/classSkills.js:
-            only skills with a sourced + spot-checked formula are selectable. */}
+            only skills with a sourced + spot-checked formula are selectable.
+            classFilter (below) narrows the skill row to one class at a time, purely a
+            display filter -- it never touches activeSkillKey by itself, so filtering
+            to a different class doesn't silently swap which skill is actually active. */}
         <div style={{ marginBottom:12, padding:"10px 14px", border:"1px solid #30363d", borderRadius:8, background:"#161b22" }}>
-          <div style={{ fontSize:10, color:"#6b7280", letterSpacing:1, marginBottom:6 }}>CLASS / PRIMARY SKILL</div>
+          <div style={{ fontSize:10, color:"#6b7280", letterSpacing:1, marginBottom:6 }}>CLASS</div>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
+            <button onClick={() => setClassFilter(null)}
+              style={{
+                background: classFilter === null ? "#7c3aed22" : "#0d1117",
+                border: `1px solid ${classFilter === null ? "#7c3aed" : "#30363d"}`,
+                borderRadius:4, padding:"3px 10px",
+                color: classFilter === null ? "#a78bfa" : "#9ca3af",
+                fontFamily:"inherit", fontSize:11, fontWeight: classFilter === null ? 700 : 400, cursor:"pointer",
+              }}>
+              Show All Skills
+            </button>
+            {CLASS_LIST.map(cls => (
+              <button key={cls} onClick={() => setClassFilter(cls)}
+                style={{
+                  background: classFilter === cls ? "#7c3aed22" : "#0d1117",
+                  border: `1px solid ${classFilter === cls ? "#7c3aed" : "#30363d"}`,
+                  borderRadius:4, padding:"3px 10px",
+                  color: classFilter === cls ? "#a78bfa" : "#9ca3af",
+                  fontFamily:"inherit", fontSize:11, fontWeight: classFilter === cls ? 700 : 400, cursor:"pointer",
+                }}>
+                {CLASS_LABEL[cls]}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize:10, color:"#6b7280", letterSpacing:1, marginBottom:6 }}>PRIMARY SKILL</div>
           <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-            {SKILL_LIST.map(s => (
+            {SKILL_LIST.filter(s => classFilter === null || s.class === classFilter).map(s => (
               <button key={s.key}
                 onClick={() => s.verified && setActiveSkillKey(s.key)}
                 disabled={!s.verified}
