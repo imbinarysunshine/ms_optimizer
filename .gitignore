@@ -3,6 +3,7 @@ dist/
 .DS_Store
 *.log
 tools/rope_analysis.json
+tools/unreachable_clusters_report.json
 tools/.wz_cache/
 tools/.spotcheck_cache/
 maplestory_source_wz_extracts.zip
