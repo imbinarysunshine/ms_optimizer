@@ -868,14 +868,22 @@ export default function App() {
       {/* Header */}
       <div style={{ background:"linear-gradient(180deg,#1a0a2e,#0d1117)", borderBottom:"2px solid #7c3aed", padding:"16px 20px 12px" }}>
         <div style={{ maxWidth:900, margin:"0 auto" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-            <span style={{ fontSize:24 }}>[Shroom]</span>
-            <div>
-              <div style={{ fontSize:18, fontWeight:700, color:"#a78bfa", letterSpacing:1 }}>MAPLESTORY MONSTER DB</div>
-              <div style={{ fontSize:10, color:"#6b7280", letterSpacing:2 }}>
-                {MONSTER_DB.length} MONSTERS x {STAT_VERIFIED_IDS.size}/{MONSTER_DB.length} STAT-VERIFIED x {Object.keys(MAP_SCORES).length} MAPS SCORED x {Object.keys(REAL_SPAWNS).length} MAP.WZ-VERIFIED SPAWNS
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginBottom:8 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:24 }}>[Shroom]</span>
+              <div>
+                <div style={{ fontSize:18, fontWeight:700, color:"#a78bfa", letterSpacing:1 }}>MAPLESTORY MONSTER DB</div>
+                <div style={{ fontSize:10, color:"#6b7280", letterSpacing:2 }}>
+                  {MONSTER_DB.length} MONSTERS x {STAT_VERIFIED_IDS.size}/{MONSTER_DB.length} STAT-VERIFIED x {Object.keys(MAP_SCORES).length} MAPS SCORED x {Object.keys(REAL_SPAWNS).length} MAP.WZ-VERIFIED SPAWNS
+                </div>
               </div>
             </div>
+            <a
+              href="./docs.html"
+              style={{ fontSize:11, color:"#a78bfa", border:"1px solid #30363d", borderRadius:4, padding:"5px 12px", textDecoration:"none", background:"#161b22", whiteSpace:"nowrap" }}
+            >
+              Docs / How-To
+            </a>
           </div>
         </div>
       </div>
