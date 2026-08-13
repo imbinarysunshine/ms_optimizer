@@ -9,7 +9,7 @@ import {
   mpEaterAbsorbPerProc, mpEaterProcChance, mpEaterExpectedReturn, mpEaterAnyProcChance, netMpCost,
   calcLevelsGained, FALLBACK_INCOME_PER_KILL, incomePerKillFor,
   POTIONS, sessionProfit, elementalMultiplier, scaleDamage,
-  HP_POTIONS, hpLossPerSecond, isSuspiciousPotionPrice,
+  HP_POTIONS, hpLossPerSecond, isSuspiciousPotionPrice, applyMagicGuard, magicGuardPct,
 } from "./lib/formulas";
 import { SKILLS, SKILL_LIST, SCORE_FIELD, SCORE_FIELD_RAW, SCORE_LABEL } from "./lib/classSkills";
 
@@ -688,6 +688,11 @@ export default function App() {
   const [takeDamage, setTakeDamage] = useState(true);
   const [hitIntervalSec, setHitIntervalSec] = useState(4); // 3-5s estimate, see formulas.js
   const [hpPotionKey, setHpPotionKey] = useState("orangePotion");
+  // Magic Guard (Magician 1st job, any branch -- see formulas.js's
+  // applyMagicGuard/MAGIC_GUARD_LEVELS) converts a % of incoming damage into
+  // MP loss instead of HP loss, so it only makes sense to model for Magician
+  // skills -- gated the same way Heal's own controls are gated to isHeal.
+  const [magicGuardLvl, setMagicGuardLvl] = useState(0);
 
   const filtered = useMemo(() => {
     // Selecting an unverified skill (see classSkills.js) means there's no trustworthy
@@ -751,12 +756,18 @@ export default function App() {
       // Incoming damage / HP potions -- see the "Take Damage" toggle and
       // formulas.js's incomingDamagePerHit header comment. m.wAtk is this
       // monster's own physical attack stat (already in MONSTER_DB).
-      const hpLossPerSec = takeDamage ? hpLossPerSecond(m.wAtk, CHAR.def, hitIntervalSec) : 0;
+      const rawHpLossPerSec = takeDamage ? hpLossPerSecond(m.wAtk, CHAR.def, hitIntervalSec) : 0;
+      // Magic Guard (Magician only, see the state declaration above) redirects
+      // part of that HP-loss stream into an MP-loss stream instead.
+      const magicGuardApplies = takeDamage && activeSkill.class === "magician" && magicGuardLvl > 0;
+      const { hpLossPerSec, extraMpLossPerSec } = magicGuardApplies
+        ? applyMagicGuard(rawHpLossPerSec, magicGuardLvl)
+        : { hpLossPerSec: rawHpLossPerSec, extraMpLossPerSec: 0 };
       // Elemental immunity means this skill can never kill this monster -- session
       // profit is a flat zero rather than running sessionProfit with a null hits.
       const session = immune
         ? { casts: 0, kills: 0, potCost: 0, mpPotCost: 0, hpPotCost: 0, mpPotsNeeded: 0, hpPotsNeeded: 0, income: 0, profit: 0, totalExp: 0, levelsGained: 0, leftoverPct: charExpPct, finalLevel: CHAR.level }
-        : sessionProfit(sessionMins, activeSkill.castTimeSec, killsPerCast, netMpPerSessionUnit, m.exp, CHAR.level, charExpPct, potionKey, CHAR.mpMax, mobIncomePerKill, hpLossPerSec, hpPotionKey, CHAR.hpMax);
+        : sessionProfit(sessionMins, activeSkill.castTimeSec, killsPerCast, netMpPerSessionUnit, m.exp, CHAR.level, charExpPct, potionKey, CHAR.mpMax, mobIncomePerKill, hpLossPerSec, hpPotionKey, CHAR.hpMax, extraMpLossPerSec);
       // Efficiency ratio = actual casts needed to kill / total exp on offer -- lower is
       // better (fewer casts per unit of exp). Deliberately NOT hp/exp: with damage far
       // exceeding what's needed to kill a low-level mob, a tiny-hp/tiny-exp monster
@@ -839,7 +850,7 @@ export default function App() {
     else if (sortBy === "exp") list.sort((a,b) => sortDir*(a.exp2x - b.exp2x));
     else if (sortBy === "hp") list.sort((a,b) => sortDir*(a.hp - b.hp));
     return list;
-  }, [query, levelMin, levelMax, bossOnly, undeadOnly, autoOnly, hideUnknownLoc, hideNoMapData, hideRopeHeavy, hideLowSpawn, hideUnreachable, minMapScore, weakFilter, effFilter, castsFilter, zoneFilter, sortBy, sortDir, isHeal, healTargets, mpEaterLvl, sessionMins, potionKey, takeDamage, hitIntervalSec, hpPotionKey, CHAR, dmg, dmgFn, activeSkill]);
+  }, [query, levelMin, levelMax, bossOnly, undeadOnly, autoOnly, hideUnknownLoc, hideNoMapData, hideRopeHeavy, hideLowSpawn, hideUnreachable, minMapScore, weakFilter, effFilter, castsFilter, zoneFilter, sortBy, sortDir, isHeal, healTargets, mpEaterLvl, sessionMins, potionKey, takeDamage, hitIntervalSec, hpPotionKey, magicGuardLvl, CHAR, dmg, dmgFn, activeSkill]);
 
   return (
     <div style={{ minHeight:"100vh", background:"#0d1117", fontFamily:"monospace", color:"#e2e8f0" }}>
@@ -1019,6 +1030,16 @@ export default function App() {
               </>
             )}
           </FilterRow>
+          {takeDamage && activeSkill.class === "magician" && (
+            <FilterRow label="Magic Guard" hint="Converts a % of incoming damage into MP loss instead of HP loss while active (v62 Skill.wz id 2001003, Magician 1st job) -- 2% per level, capping at 40% at Lv20. Also adds its own small MP cost to recast the buff periodically. Reduces HP pot usage, increases MP pot usage.">
+              <input type="range" min={0} max={20} value={magicGuardLvl} onChange={e=>setMagicGuardLvl(+e.target.value)}
+                style={{ width:80, accentColor:"#60a5fa" }} />
+              <span style={{ color:"#60a5fa", fontWeight:700, minWidth:20 }}>{magicGuardLvl}</span>
+              <span style={{ fontSize:10, color:"#4b5563" }}>
+                {magicGuardLvl === 0 ? "(disabled)" : `(${magicGuardPct(magicGuardLvl)}% dmg -> MP)`}
+              </span>
+            </FilterRow>
+          )}
         </div>
 
         {/* Heal-only controls -- only meaningful, and only shown, when Heal is the active skill */}

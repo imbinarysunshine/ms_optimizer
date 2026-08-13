@@ -309,13 +309,16 @@ export function isSuspiciousPotionPrice(potion, kind) {
 // hpPotionKey are optional (default to no HP cost) so every existing call site and
 // test keeps its exact prior behavior unless it opts in -- see App.jsx's "Take
 // Damage" toggle and incomingDamagePerHit() below for how hpLossPerSec is derived.
-export function sessionProfit(minutes, castTimeSec, killsPerCast, netMpCostPerCast, expPerKill, charLevel, charExpPct, potionKey, charMpMax, incomePerKill, hpLossPerSec = 0, hpPotionKey = null, charHpMax = 1) {
+// extraMpLossPerSec is likewise optional -- Magic Guard's own MP drain (see
+// applyMagicGuard above), added on top of the skill's own netMpCostPerCast
+// rather than replacing it (both are real, simultaneous MP costs).
+export function sessionProfit(minutes, castTimeSec, killsPerCast, netMpCostPerCast, expPerKill, charLevel, charExpPct, potionKey, charMpMax, incomePerKill, hpLossPerSec = 0, hpPotionKey = null, charHpMax = 1, extraMpLossPerSec = 0) {
   const potion = POTIONS[potionKey] || POTIONS.bluePotion;
   const mpPerPotion = potion.mpFlat != null ? potion.mpFlat : potion.mpPct * (charMpMax || 1);
   const secs = minutes * 60;
   const casts = secs / castTimeSec;
   const kills = casts * killsPerCast;
-  const mpPotsNeeded = (casts * netMpCostPerCast) / mpPerPotion;
+  const mpPotsNeeded = (casts * netMpCostPerCast + secs * extraMpLossPerSec) / mpPerPotion;
   const mpPotCost = mpPotsNeeded * potion.cost;
   let hpPotsNeeded = 0, hpPotCost = 0;
   if (hpLossPerSec > 0 && hpPotionKey) {
@@ -361,4 +364,51 @@ export function incomingDamagePerHit(mobWatk, playerDef) {
 export function hpLossPerSecond(mobWatk, playerDef, hitIntervalSec) {
   if (!hitIntervalSec) return 0;
   return incomingDamagePerHit(mobWatk, playerDef) / hitIntervalSec;
+}
+
+// -- Magic Guard (v62 pre-BB, Magician 1st job, any branch) ------------------
+// Sourced from a v62 Skill.wz dump, id 2001003 -- a buff that converts a % of
+// incoming damage into MP loss instead of HP loss, while it's active. All 3
+// per-level fields (pdd = the conversion %, mpCon = MP cost per cast, time =
+// buff duration in seconds) read directly off the wz data; pdd is exactly
+// level*2 across all 20 levels (2% at Lv1, capping at the well-known 40% at
+// Lv20), but mpCon/duration step in tiers with no closed form, so they're an
+// exact lookup table rather than a formula.
+export const MAGIC_GUARD_LEVELS = {
+  1: { mpCon: 8, duration: 54 }, 2: { mpCon: 8, duration: 68 }, 3: { mpCon: 8, duration: 82 },
+  4: { mpCon: 8, duration: 96 }, 5: { mpCon: 8, duration: 110 }, 6: { mpCon: 10, duration: 144 },
+  7: { mpCon: 10, duration: 158 }, 8: { mpCon: 10, duration: 172 }, 9: { mpCon: 10, duration: 186 },
+  10: { mpCon: 10, duration: 200 }, 11: { mpCon: 13, duration: 244 }, 12: { mpCon: 13, duration: 258 },
+  13: { mpCon: 13, duration: 272 }, 14: { mpCon: 13, duration: 286 }, 15: { mpCon: 13, duration: 300 },
+  16: { mpCon: 16, duration: 344 }, 17: { mpCon: 16, duration: 358 }, 18: { mpCon: 16, duration: 372 },
+  19: { mpCon: 16, duration: 386 }, 20: { mpCon: 16, duration: 400 },
+};
+export function magicGuardPct(level) {
+  return level > 0 ? Math.min(40, level * 2) : 0;
+}
+
+// Splits an existing hpLossPerSec stream (see hpLossPerSecond above) into a
+// reduced HP-loss stream and an added MP-loss stream, given an active Magic
+// Guard level. The MP side folds in BOTH the converted damage AND Magic
+// Guard's own recast cost (mpCon every `duration` seconds, amortized to a
+// per-second rate) -- both are real MP drains a Magic-Guard-using session
+// has to pay for, not just the damage conversion itself.
+//
+// Simplification, stated plainly: real Magic Guard converts pdd% of EVERY
+// individual hit, and only overflows to HP once MP is fully depleted --a
+// true per-hit simulation. This models the session-averaged equivalent
+// instead (consistent with hpLossPerSecond itself already being an
+// estimate, not a per-hit simulation), which is exact as long as MP potions
+// keep pace with consumption -- i.e. it assumes you're never actually
+// MP-starved mid-session, same implicit assumption the rest of this app's
+// potion-cost math already makes for the skill's own MP cost.
+export function applyMagicGuard(hpLossPerSec, magicGuardLvl) {
+  if (!magicGuardLvl || hpLossPerSec <= 0) return { hpLossPerSec, extraMpLossPerSec: 0 };
+  const pct = magicGuardPct(magicGuardLvl) / 100;
+  const levelData = MAGIC_GUARD_LEVELS[magicGuardLvl];
+  const recastMpPerSec = levelData && levelData.duration > 0 ? levelData.mpCon / levelData.duration : 0;
+  return {
+    hpLossPerSec: hpLossPerSec * (1 - pct),
+    extraMpLossPerSec: hpLossPerSec * pct + recastMpPerSec,
+  };
 }
