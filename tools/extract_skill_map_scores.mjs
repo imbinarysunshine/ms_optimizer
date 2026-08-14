@@ -10,7 +10,7 @@
 //
 //   - meleeScore: single-target skills on a short-reach weapon (sword/knuckle/
 //     dagger-vs-non-thief -- see WEAPON_MULTIPLIERS in formulas.js). mcScore already
-//     covers single-target RANGED skills (bow/claw/wand/staff/gun -- MC_RANGE_PX=425
+//     covers single-target RANGED skills (bow/claw/wand/staff/gun -- MC_RANGE_PX=300
 //     was always really "ranged spell/arrow reach", not Magic-Claw-specific), so
 //     melee just reuses that exact formula shape with a much shorter reach constant.
 //   - aoeScore: same-platform radius AoE skills (Slash Blast, Somersault Kick,
@@ -28,7 +28,7 @@
 // innate weapon-swing reach, which lives in a different wz location -- Item.wz
 // per-weapon animation data -- not mined this session). 150px is a conservative
 // "same or adjacent standing spot" estimate, deliberately much shorter than
-// MC_RANGE_PX=425 -- exact calibration TODO if this matters more precisely later.
+// MC_RANGE_PX=300 -- exact calibration TODO if this matters more precisely later.
 //
 // Output: merges meleeScore/aoeScore (+ Raw variants, matching mcScoreRaw/
 // healScoreRaw's already-established convention) into public/data/mapScores.js
@@ -41,7 +41,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MAP_ROOT = "G:\\git-clones\\Cosmic\\wz\\Map.wz\\Map";
 const SCORES_PATH = path.join(__dirname, "..", "public", "data", "mapScores.js");
 
-const MC_RANGE_PX = 425;      // matches analyze_maps.py's existing constant
+const MC_RANGE_PX = 300;      // Magic Claw's actual horizontal reach, user-verified in-client (was 425, an unverified guess)
 const MELEE_RANGE_PX = 150;   // see header comment -- not wz-derived, flagged
 // Per-skill AoE reach, in px, averaged from each skill's own Skill.wz range/lt-rb
 // box at max level (see the extraction table in this session's chat, or re-derive

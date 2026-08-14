@@ -39,7 +39,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MAP_ROOT = "G:\\git-clones\\Cosmic\\wz\\Map.wz\\Map";
 const SCORES_PATH = path.join(__dirname, "..", "public", "data", "mapScores.js");
 
-const MC_RANGE_PX = 425, MELEE_RANGE_PX = 150;
+// MC_RANGE_PX: Magic Claw's actual horizontal reach, user-verified in-client at
+// 300px (previously 425px, an unverified guess carried over from analyze_maps.py).
+const MC_RANGE_PX = 300, MELEE_RANGE_PX = 150;
 const AOE_RANGE_PX = 180;          // avg horizontal AoE clump radius, see extract_skill_map_scores.mjs
 const AOE_VERTICAL_REACH_PX = 100; // avg vertical AoE box half-height, see the same skills' lt/rb data
 const GAP_REFERENCE_PX = 350;      // gap size at which a floor-hop costs the old full 0.4 tedium unit
