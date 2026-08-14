@@ -1115,7 +1115,7 @@ export default function App() {
         {/* Quick filters -- grouped by category, each its own labeled row */}
         <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:16 }}>
           <FilterRow label="Level Range">
-            {[["My range",17,25],["Low",1,15],["Mid",20,35],["High",35,60],["All",1,100]].map(([l,mn,mx])=>(
+            {[["My range",Math.max(1,charLevel-8),charLevel+8],["Low",1,15],["Mid",20,35],["High",35,60],["All",1,100]].map(([l,mn,mx])=>(
               <button key={l} onClick={()=>{setLevelMin(mn);setLevelMax(mx);}}
                 style={{ background:"#161b22", border:`1px solid ${levelMin===mn&&levelMax===mx?"#7c3aed":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:levelMin===mn&&levelMax===mx?"#a78bfa":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer" }}>
                 {l}
