@@ -419,7 +419,7 @@ function NumberField({ value, onCommit, min, max, step = 1, style }) {
   );
 }
 
-function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg, activeSkill, isHeal, healTargets, mpEaterLvl, sessionMins, potionKey }) {
+function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg, activeSkill, isHeal, healTargets, mpEaterLvl, sessionMins, potionKey, hideRopeHeavy, hideLowSpawn, hideUnreachable }) {
   return (
             <div key={m.id} onClick={()=>setSelected(selected===m.id?null:m.id)}
               style={{ background:"#161b22", border:`1px solid ${selected===m.id?"#7c3aed":i===0&&!selected?"#7c3aed44":"#21262d"}`, borderRadius:8, padding:"10px 14px", cursor:"pointer", transition:"border-color 0.15s" }}>
@@ -534,16 +534,33 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                 </div>
               </div>
 
-              {m.spawnMaps && (
+              {m.spawnMaps && (() => {
+                // The list-level "Hide Rope-Heavy/Low-Spawn/Unreachable Maps" filters
+                // only drop a MONSTER when every one of its maps has the problem (a
+                // monster with even one good map is still worth farming) -- but that
+                // left the individual bad maps still showing in this per-monster list,
+                // reading as if the toggle "did nothing" for a monster with a mix of
+                // good and bad maps (e.g. Horny Mushroom). Apply the same toggles here
+                // too, at the map level, so a flagged map actually disappears from view.
+                const visibleMaps = m.spawnMaps.filter(s =>
+                  (!hideRopeHeavy || !isRopeHeavyMap(s.mapId)) &&
+                  (!hideLowSpawn || !isLowSpawnMap(s.mapId)) &&
+                  (!hideUnreachable || !isUnreachableMap(s.mapId))
+                );
+                if (!visibleMaps.length) return null;
+                return (
                 <div style={{ marginTop:8 }}>
                   <div style={{ fontSize:10, color:"#4b5563", marginBottom:4, letterSpacing:1 }}>
                     [M] SPAWN MAPS (click for full map)
                     {m.spawnMaps.some(s=>s.verified) && (
                       <span style={{ marginLeft:8, color:"#4ade80" }}>[OK] MAP.WZ VERIFIED</span>
                     )}
+                    {visibleMaps.length < m.spawnMaps.length && (
+                      <span style={{ marginLeft:8, color:"#6b7280" }}>({m.spawnMaps.length - visibleMaps.length} hidden by filters)</span>
+                    )}
                   </div>
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                    {m.spawnMaps.map(({name, mapId, count, verified}) => (
+                    {visibleMaps.map(({name, mapId, count, verified}) => (
                       <div key={mapId} onClick={()=>setWorldMapMapId(mapId)}
                         title={`${name} (${count} spawns)${verified ? " - Map.wz verified" : " - curated/unverified"}${MAP_PLATFORM_DATA[mapId] ? " - " + MAP_PLATFORM_DATA[mapId].notes : ""} -- click to expand`}
                         style={{ display:"block", border:`1px solid ${verified ? "#166534" : "#30363d"}`, borderRadius:4, overflow:"hidden", cursor:"pointer", flexShrink:0, transition:"border-color 0.15s", position:"relative" }}
@@ -641,7 +658,8 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                     ))}
                   </div>
                 </div>
-              )}
+                );
+              })()}
             </div>
   );
 }
@@ -1328,12 +1346,12 @@ export default function App() {
               {hideNoMapData ? "Hiding No-Map Mobs" : "Show No-Map Mobs"}
             </button>
             <button onClick={()=>setHideRopeHeavy(v=>!v)}
-              title="Hides monsters whose EVERY known spawn map is rope/ladder-heavy (see the ROPE-HEAVY map badge) -- a monster with at least one non-rope-heavy map stays visible"
+              title="Hides individual rope/ladder-heavy spawn maps from each monster's map list (see the ROPE-HEAVY map badge), and hides a monster entirely if EVERY known spawn map has the problem -- a monster with at least one non-rope-heavy map stays visible, just without its bad maps shown"
               style={{ background:"#161b22", border:`1px solid ${hideRopeHeavy?"#5c3315":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:hideRopeHeavy?"#f59e0b":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:hideRopeHeavy?700:400 }}>
               {hideRopeHeavy ? "Hiding Rope-Heavy Maps" : "Show Rope-Heavy Maps"}
             </button>
             <button onClick={()=>setHideLowSpawn(v=>!v)}
-              title="Hides monsters whose EVERY known spawn map has a low total mob population (see the LOW SPAWN map badge) -- likely to be cleared faster than it respawns, leaving you idle. A monster with at least one well-stocked map stays visible"
+              title="Hides individual low-population spawn maps from each monster's map list (see the LOW SPAWN map badge), and hides a monster entirely if EVERY known spawn map has the problem -- likely to be cleared faster than it respawns, leaving you idle"
               style={{ background:"#161b22", border:`1px solid ${hideLowSpawn?"#5c1a1a":"#30363d"}`, borderRadius:4, padding:"3px 10px", color:hideLowSpawn?"#f87171":"#9ca3af", fontFamily:"inherit", fontSize:11, cursor:"pointer", fontWeight:hideLowSpawn?700:400 }}>
               {hideLowSpawn ? "Hiding Low-Spawn Maps" : "Show Low-Spawn Maps"}
             </button>
@@ -1387,7 +1405,8 @@ export default function App() {
           renderItem={(m, i) => (
             <MonsterCard key={m.id} m={m} i={i} selected={selected} setSelected={setSelected}
               setWorldMapMapId={setWorldMapMapId} CHAR={CHAR} dmg={dmg} activeSkill={activeSkill} isHeal={isHeal}
-              healTargets={healTargets} mpEaterLvl={mpEaterLvl} sessionMins={sessionMins} potionKey={potionKey} />
+              healTargets={healTargets} mpEaterLvl={mpEaterLvl} sessionMins={sessionMins} potionKey={potionKey}
+              hideRopeHeavy={hideRopeHeavy} hideLowSpawn={hideLowSpawn} hideUnreachable={hideUnreachable} />
           )}
         />
         </div>
