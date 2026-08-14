@@ -10,6 +10,7 @@ import {
   calcLevelsGained, FALLBACK_INCOME_PER_KILL, incomePerKillFor,
   POTIONS, sessionProfit, elementalMultiplier, scaleDamage,
   HP_POTIONS, hpLossPerSecond, isSuspiciousPotionPrice, applyMagicGuard, magicGuardPct,
+  playerAccuracy, requiredAccuracy, hitChance,
 } from "./lib/formulas";
 import { SKILLS, SKILL_LIST, SCORE_FIELD, SCORE_FIELD_RAW, SCORE_LABEL } from "./lib/classSkills";
 
@@ -391,6 +392,33 @@ function FilterRow({ label, hint, children }) {
   );
 }
 
+// A plain type="number" input bound directly to a numeric value fights the user
+// while they're editing it: deleting all the digits round-trips through parseInt
+// ""->NaN->0, and every keystroke re-stringifies the number and resets the
+// cursor to the end -- in practice this reads as "I can only ever add digits,
+// never delete/rearrange them". Keeping the in-progress text as local state
+// (only committing/clamping a parsed number to the parent on blur) fixes both.
+function NumberField({ value, onCommit, min, max, step = 1, style }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => { setText(String(value)); }, [value]);
+  return (
+    <input type="text" inputMode={step < 1 ? "decimal" : "numeric"} value={text}
+      onChange={e => {
+        const v = e.target.value;
+        if (v === "" || v === "-" || /^-?\d*\.?\d*$/.test(v)) setText(v);
+      }}
+      onBlur={() => {
+        let n = parseFloat(text);
+        if (isNaN(n)) n = min;
+        n = Math.max(min, Math.min(max, n));
+        setText(String(n));
+        onCommit(n);
+      }}
+      onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
+      style={{ width:"100%", background:"#161b22", border:"1px solid #30363d", borderRadius:4, padding:"4px 8px", color:"#e2e8f0", fontFamily:"monospace", fontSize:12, boxSizing:"border-box", ...style }} />
+  );
+}
+
 function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg, activeSkill, isHeal, healTargets, mpEaterLvl, sessionMins, potionKey }) {
   return (
             <div key={m.id} onClick={()=>setSelected(selected===m.id?null:m.id)}
@@ -430,16 +458,24 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                 <div><span style={{color:"#6b7280"}}>Meso </span><span style={{color:"#fcd34d"}}>~{Math.round(m.wAtk*0.45)}-{Math.round(m.wAtk*0.7)}</span></div>
                 <div><span style={{color:"#6b7280"}}>W.ATK </span><span>{m.wAtk}</span></div>
                 <div><span style={{color:"#6b7280"}}>Avoid </span><span>{m.avoid}</span></div>
-                <div><span style={{color:"#6b7280"}}>ACC req </span><span>{m.acc}</span></div>
+                <div title={`Your ACC (${m.playerAcc}, from DEX/LUK) needs to reach this for a guaranteed hit -- see the HIT% badge below for your actual chance at your current level`}><span style={{color:"#6b7280"}}>ACC req </span><span>{m.reqAcc}</span></div>
                 <div><span style={{color:"#6b7280"}}>Eff.HP </span><span style={{color:"#fbbf24"}}>{m.effHP}</span></div>
               </div>
 
               {/* Combat */}
-              <div style={{ marginTop:8, padding:"6px 10px", background:"#0d1117", borderRadius:4, borderLeft:`3px solid ${m.elementalMult===0?"#6b7280":m.hits===1?"#22c55e":m.hits===2?"#eab308":"#ef4444"}`, fontSize:11, display:"flex", gap:14, flexWrap:"wrap" }}>
+              <div style={{ marginTop:8, padding:"6px 10px", background:"#0d1117", borderRadius:4, borderLeft:`3px solid ${m.elementalMult===0?"#6b7280":m.hits===1?"#22c55e":m.hits===2?"#eab338":"#ef4444"}`, fontSize:11, display:"flex", gap:14, flexWrap:"wrap" }}>
                 {m.elementalMult === 0 ? (
                   <span><span style={{color:"#6b7280"}}>CASTS: </span><span style={{color:"#9ca3af", fontWeight:700}}>N/A -- IMMUNE to {activeSkill.element}</span></span>
                 ) : (
-                  <span><span style={{color:"#6b7280"}}>CASTS: </span><span style={{color:m.hits===1?"#22c55e":m.hits===2?"#eab308":"#ef4444", fontWeight:700}}>{m.hits}{m.hits===1?" [OK] ONE-SHOT":""}</span></span>
+                  <span><span style={{color:"#6b7280"}}>CASTS: </span><span style={{color:m.hits===1?"#22c55e":m.hits===2?"#eab308":"#ef4444", fontWeight:700}}>{m.hits}{m.hits===1?" [OK] ONE-SHOT":""}</span>
+                    {!isHeal && m.hitPct < 0.999 && <span style={{color:"#6b7280"}}> ({m.effHits} w/misses)</span>}
+                  </span>
+                )}
+                {!isHeal && m.elementalMult !== 0 && (
+                  <span title={`Your ACC ${m.playerAcc} vs ${m.reqAcc} required -- chance each cast actually lands`}>
+                    <span style={{color:"#6b7280"}}>HIT%: </span>
+                    <span style={{color: m.hitPct>=0.95?"#22c55e":m.hitPct>=0.7?"#eab308":"#ef4444", fontWeight:700}}>{Math.round(m.hitPct*100)}%</span>
+                  </span>
                 )}
                 <span><span style={{color:"#6b7280"}}>YOUR DMG: </span>{(m.dmgMin*activeSkill.hitsPerCast).toFixed(0)}-{(m.dmgMax*activeSkill.hitsPerCast).toFixed(0)}/cast ({m.dmgMin.toFixed(0)}-{m.dmgMax.toFixed(0)}/hit x{activeSkill.hitsPerCast}) vs {m.effHP}
                   {activeSkill.element && m.elementalMult !== 1 && (
@@ -447,9 +483,9 @@ function MonsterCard({ m, i, selected, setSelected, setWorldMapMapId, CHAR, dmg,
                   )}
                 </span>
                 {m.elementalMult !== 0 && (
-                  <span><span style={{color:"#6b7280"}}>MP/{isHeal ? "CAST" : "KILL"}: </span><span style={{color:"#0ea5e9"}}>{isHeal ? m.mpCostPerCast : m.hits*m.mpCostPerCast}</span>
+                  <span><span style={{color:"#6b7280"}}>MP/{isHeal ? "CAST" : "KILL"}: </span><span style={{color:"#0ea5e9"}}>{isHeal ? m.mpCostPerCast : Math.round(m.effHits*m.mpCostPerCast)}</span>
                     {mpEaterLvl > 0 && m.mp > 0 && (
-                      <span style={{color:"#60a5fa"}}> (net ~{(isHeal ? m.mcNetMp : m.mcNetMp * m.hits).toFixed(1)} w/MPE {(m.mcAnyProc*100).toFixed(0)}% proc)</span>
+                      <span style={{color:"#60a5fa"}}> (net ~{(isHeal ? m.mcNetMp : m.mcNetMp * m.effHits).toFixed(1)} w/MPE {(m.mcAnyProc*100).toFixed(0)}% proc)</span>
                     )}
                   </span>
                 )}
@@ -705,6 +741,77 @@ export default function App() {
   // skills -- gated the same way Heal's own controls are gated to isHeal.
   const [magicGuardLvl, setMagicGuardLvl] = useState(0);
 
+  // -- Persistence (localStorage) --------------------------------------------
+  // Re-entering your character/skill/session setup on every visit was reported
+  // as tedious -- persist it across visits the same way a game client remembers
+  // your last-used build. Load once on mount, then save on every change; the
+  // hydratedRef guard stops the save effect from firing (and overwriting saved
+  // data with defaults) before the load effect has had a chance to run.
+  const PERSIST_KEY = "msOptimizer:setup:v1";
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(PERSIST_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved.activeSkillKey) setActiveSkillKey(saved.activeSkillKey);
+        if (saved.classFilter !== undefined) setClassFilter(saved.classFilter);
+        if (typeof saved.charLevel === "number") setCharLevel(saved.charLevel);
+        if (typeof saved.charStr === "number") setCharStr(saved.charStr);
+        if (typeof saved.charDex === "number") setCharDex(saved.charDex);
+        if (typeof saved.charInt === "number") setCharInt(saved.charInt);
+        if (typeof saved.charLuk === "number") setCharLuk(saved.charLuk);
+        if (typeof saved.charWeaponAtk === "number") setCharWeaponAtk(saved.charWeaponAtk);
+        if (typeof saved.charMpMax === "number") setCharMpMax(saved.charMpMax);
+        if (typeof saved.charHpMax === "number") setCharHpMax(saved.charHpMax);
+        if (typeof saved.charDef === "number") setCharDef(saved.charDef);
+        if (typeof saved.charExpPct === "number") setCharExpPct(saved.charExpPct);
+        if (typeof saved.healLvl === "number") setHealLvl(saved.healLvl);
+        if (typeof saved.healTargets === "number") setHealTargets(saved.healTargets);
+        if (typeof saved.mpEaterLvl === "number") setMpEaterLvl(saved.mpEaterLvl);
+        if (typeof saved.sessionMins === "number") setSessionMins(saved.sessionMins);
+        if (saved.potionKey) setPotionKey(saved.potionKey);
+        if (typeof saved.takeDamage === "boolean") setTakeDamage(saved.takeDamage);
+        if (typeof saved.hitIntervalSec === "number") setHitIntervalSec(saved.hitIntervalSec);
+        if (saved.hpPotionKey) setHpPotionKey(saved.hpPotionKey);
+        if (typeof saved.magicGuardLvl === "number") setMagicGuardLvl(saved.magicGuardLvl);
+      }
+    } catch { /* malformed or inaccessible storage (private mode, quota) -- fall back to defaults */ }
+    hydratedRef.current = true;
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined" || !hydratedRef.current) return;
+    try {
+      window.localStorage.setItem(PERSIST_KEY, JSON.stringify({
+        activeSkillKey, classFilter, charLevel, charStr, charDex, charInt, charLuk,
+        charWeaponAtk, charMpMax, charHpMax, charDef, charExpPct, healLvl, healTargets,
+        mpEaterLvl, sessionMins, potionKey, takeDamage, hitIntervalSec, hpPotionKey, magicGuardLvl,
+      }));
+    } catch { /* storage may be unavailable -- setup just won't persist this session */ }
+  }, [activeSkillKey, classFilter, charLevel, charStr, charDex, charInt, charLuk,
+      charWeaponAtk, charMpMax, charHpMax, charDef, charExpPct, healLvl, healTargets,
+      mpEaterLvl, sessionMins, potionKey, takeDamage, hitIntervalSec, hpPotionKey, magicGuardLvl]);
+
+  // Changing the level field re-projects STR/DEX/INT/LUK/MP from the character's
+  // CURRENT stats using the active skill's own AP distribution (see
+  // AP_DISTRIBUTIONS in formulas.js -- e.g. Magician's +4 INT/+1 LUK per level),
+  // instead of leaving every other stat stale. Weapon Attack/HP/DEF aren't part
+  // of that distribution (gear-dependent, not a pure per-level formula this app
+  // tracks) so they're left for the user to adjust by hand.
+  const handleLevelChange = (newLevel) => {
+    const clamped = Math.max(1, Math.min(70, Math.round(newLevel) || 1));
+    const projected = statsAtLevel(clamped, {
+      level: charLevel, str: charStr, dex: charDex, int: charInt, luk: charLuk, mpMax: charMpMax,
+    }, activeSkill.apDistribution);
+    setCharLevel(clamped);
+    setCharStr(projected.str);
+    setCharDex(projected.dex);
+    setCharInt(projected.int);
+    setCharLuk(projected.luk);
+    setCharMpMax(projected.mpMax);
+  };
+
   const filtered = useMemo(() => {
     // Selecting an unverified skill (see classSkills.js) means there's no trustworthy
     // damage formula to compute anything from -- rather than guess, show nothing and
@@ -751,6 +858,16 @@ export default function App() {
       // independently-rolled hits/cast; generalizes to any skill's own hit count).
       const immune = mult === 0;
       const hits = immune ? null : hitsToKill(m.hp, m.mDef, mDmg.min * activeSkill.hitsPerCast);
+      // Accuracy: a cast that misses deals 0 damage but still costs its MP and
+      // time, so every downstream cast/MP/exp number below is scaled by the
+      // expected number of casts needed to land `hits` real hits, not `hits`
+      // itself. See formulas.js's hitChance header comment for the formula and
+      // its sourcing; Heal has no miss chance (it's not an accuracy-checked
+      // attack roll in the classic client), so it's excluded.
+      const playerAcc = playerAccuracy(CHAR.dex, CHAR.luk, activeSkill.class);
+      const reqAcc = requiredAccuracy(m.avoid, m.level, CHAR.level);
+      const hitPct = isHeal || immune ? 1 : hitChance(playerAcc, m.avoid, m.level, CHAR.level);
+      const effHits = immune ? null : hits / hitPct;
       // Heal's MP cost depends on healLvl (29 + healLvl), already folded into dmg.mpCost
       // by healDmg -- every other skill's cost is a flat per-character mpCost(CHAR).
       const mpCostPerCast = isHeal ? dmg.mpCost : (activeSkill.mpCost ? activeSkill.mpCost(CHAR) : 20);
@@ -763,7 +880,7 @@ export default function App() {
       // still modeled as single-target-per-cast (Slash Blast/Somersault Kick's own
       // multi-mob AoE isn't throughput-modeled yet, same gap noted in classSkills.js).
       const killsPerCast = isHeal ? healTargets / (hits || 1) : 1;
-      const netMpPerSessionUnit = isHeal ? netMp : netMp * hits;
+      const netMpPerSessionUnit = isHeal ? netMp : netMp * effHits;
       // Incoming damage / HP potions -- see the "Take Damage" toggle and
       // formulas.js's incomingDamagePerHit header comment. m.wAtk is this
       // monster's own physical attack stat (already in MONSTER_DB).
@@ -785,13 +902,13 @@ export default function App() {
       // could look artificially "efficient" on a pure hp-based ratio even though a
       // real, appropriately-leveled monster nets far more exp for the same 1 cast.
       const ratio = immune ? Infinity
-        : isHeal ? hits / (m.exp * EXP_MULTI * Math.min(healTargets, 6)) : hits / (m.exp * EXP_MULTI);
+        : isHeal ? hits / (m.exp * EXP_MULTI * Math.min(healTargets, 6)) : effHits / (m.exp * EXP_MULTI);
       // EXP/hr: the same casts-to-kill-per-exp math as ratio above, just inverted and
       // scaled into an intuitive, higher-is-better unit for display -- "how much reward
       // am I actually getting" is a much clearer question than an abstract ratio number.
       const expPerHour = immune ? 0
         : isHeal ? (m.exp * EXP_MULTI * Math.min(healTargets, 6) / hits) * (3600 / activeSkill.castTimeSec)
-        : (m.exp * EXP_MULTI / hits) * (3600 / activeSkill.castTimeSec);
+        : (m.exp * EXP_MULTI / effHits) * (3600 / activeSkill.castTimeSec);
       return {
         ...m,
         undead: isUndead,
@@ -801,6 +918,10 @@ export default function App() {
         primaryExpPerHour: expPerHour,
         expPerHour,
         hits,
+        effHits: immune ? null : Math.round(effHits),
+        hitPct,
+        playerAcc: Math.round(playerAcc),
+        reqAcc: Math.round(reqAcc),
         elementalMult: mult,
         dmgMin: mDmg.min, dmgMax: mDmg.max,
         oneshotLvl: immune ? null : oneshotLevel(m.hp, m.mDef, CHAR, activeSkill.apDistribution, stats => scaleDamage(dmgFn(stats), mult), activeSkill.hitsPerCast),
@@ -973,8 +1094,17 @@ export default function App() {
           </button>
           {charPanelOpen && (
             <div style={{ background:"#0d1117", padding:"12px 14px", display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"10px 16px" }}>
+              <div>
+                <div style={{ fontSize:10, color:"#6b7280", marginBottom:3, letterSpacing:1 }}>LEVEL</div>
+                <div style={{ display:"flex", gap:4 }}>
+                  <button onClick={() => handleLevelChange(charLevel - 1)}
+                    style={{ background:"#21262d", border:"1px solid #30363d", borderRadius:4, padding:"0 8px", color:"#9ca3af", fontFamily:"monospace", fontSize:13, cursor:"pointer" }}>-</button>
+                  <NumberField value={charLevel} onCommit={handleLevelChange} min={1} max={70} step={1} />
+                  <button onClick={() => handleLevelChange(charLevel + 1)}
+                    style={{ background:"#21262d", border:"1px solid #30363d", borderRadius:4, padding:"0 8px", color:"#9ca3af", fontFamily:"monospace", fontSize:13, cursor:"pointer" }}>+</button>
+                </div>
+              </div>
               {[
-                ["Level", charLevel, setCharLevel, 1, 70, 1],
                 ["STR", charStr, setCharStr, 4, 999, 1],
                 ["DEX", charDex, setCharDex, 4, 999, 1],
                 ["INT", charInt, setCharInt, 10, 999, 1],
@@ -987,9 +1117,7 @@ export default function App() {
               ].map(([label, val, setter, min, max, step]) => (
                 <div key={label}>
                   <div style={{ fontSize:10, color:"#6b7280", marginBottom:3, letterSpacing:1 }}>{label.toUpperCase()}</div>
-                  <input type="number" value={val} min={min} max={max} step={step}
-                    onChange={e => setter(step < 1 ? parseFloat(e.target.value)||0 : parseInt(e.target.value)||0)}
-                    style={{ width:"100%", background:"#161b22", border:"1px solid #30363d", borderRadius:4, padding:"4px 8px", color:"#e2e8f0", fontFamily:"monospace", fontSize:12, boxSizing:"border-box" }} />
+                  <NumberField value={val} onCommit={setter} min={min} max={max} step={step} />
                 </div>
               ))}
               <div style={{ gridColumn:"1/-1", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>

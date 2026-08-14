@@ -145,6 +145,45 @@ export function hitsToKill(hp, mdef, dmgMin) {
   return Math.ceil(eh / dmgMin);
 }
 
+// -- Accuracy / hit chance (v62 pre-BB) ---------------------------------------
+// `hitsToKill` above assumes every cast lands -- in real MapleStory a mob's
+// AVOID stat and the level gap between attacker and mob can make that false,
+// wasting whole casts (and their MP) on misses. This is the long-standing
+// pre-Big-Bang community hit-rate formula (Southperry/Ayumilove-era formula
+// compilations, cross-referenced across multiple classic-server writeups) --
+// NOT the sigmoid-based "Certainty" system GMS switched to circa v200+, which
+// postdates this v62 era and doesn't apply here.
+//
+//   base ACC (before gear/buffs) = DEX*0.8 + LUK*0.5   for Warrior/Magician/Beginner
+//                                = DEX*0.6 + LUK*0.3   for Bowman/Thief/Pirate
+//   D (level gap)   = max(0, mobLevel - playerLevel)
+//   required ACC    = (1.84 + 0.07*D) * mobAvoid        -- the ACC at which hit chance reaches 100%
+//   hit chance      = clamp(playerACC / requiredACC, 0, 1)
+//
+// This app doesn't track weapon/scroll ACC bonuses (no equipment model), so
+// playerAccuracy() is base-stat-only -- a floor on real accuracy, not a ceiling.
+export const ACC_STAT_COEFFICIENTS = {
+  warrior:  { dex: 0.8, luk: 0.5 },
+  magician: { dex: 0.8, luk: 0.5 },
+  bowman:   { dex: 0.6, luk: 0.3 },
+  thief:    { dex: 0.6, luk: 0.3 },
+  pirate:   { dex: 0.6, luk: 0.3 },
+};
+export function playerAccuracy(dex, luk, classId) {
+  const c = ACC_STAT_COEFFICIENTS[classId] || ACC_STAT_COEFFICIENTS.warrior;
+  return dex * c.dex + luk * c.luk;
+}
+export function requiredAccuracy(mobAvoid, mobLevel, playerLevel) {
+  const levelGap = Math.max(0, mobLevel - playerLevel);
+  return (1.84 + 0.07 * levelGap) * mobAvoid;
+}
+export function hitChance(playerAcc, mobAvoid, mobLevel, playerLevel) {
+  if (mobAvoid <= 0) return 1;
+  const req = requiredAccuracy(mobAvoid, mobLevel, playerLevel);
+  if (req <= 0) return 1;
+  return Math.max(0, Math.min(1, playerAcc / req));
+}
+
 // -- Heal skill formula (v62 pre-BB, source: Ayumilove/Southperry formula compilation) --
 // Heal Lv N: MP cost = 29 + N, Skill% = N * 15%
 // MIN = (INT*0.3 + LUK) * Magic/1000 * HEAL_TARGET_MULT * skillPct

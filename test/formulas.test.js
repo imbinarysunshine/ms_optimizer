@@ -10,6 +10,7 @@ import {
   magicSkillDamage, elementalMultiplier, scaleDamage, ELEMENTAL_MULTIPLIER,
   HP_POTIONS, incomingDamagePerHit, hpLossPerSecond, isSuspiciousPotionPrice,
   MAGIC_GUARD_LEVELS, magicGuardPct, applyMagicGuard,
+  ACC_STAT_COEFFICIENTS, playerAccuracy, requiredAccuracy, hitChance,
 } from "../src/lib/formulas";
 import { SKILLS } from "../src/lib/classSkills";
 import { EXP_TABLE } from "../src/data/expTable";
@@ -789,5 +790,58 @@ describe("applyMagicGuard", () => {
     const recastPerSec = MAGIC_GUARD_LEVELS[lvl].mpCon / MAGIC_GUARD_LEVELS[lvl].duration;
     const convertedDamage = r.extraMpLossPerSec - recastPerSec;
     expect(r.hpLossPerSec + convertedDamage).toBeCloseTo(hpLossPerSec, 10);
+  });
+});
+
+describe("Accuracy / hit chance", () => {
+  it("playerAccuracy uses the Warrior/Magician coefficients (dex*0.8 + luk*0.5)", () => {
+    expect(playerAccuracy(100, 40, "warrior")).toBeCloseTo(100 * 0.8 + 40 * 0.5, 10);
+    expect(playerAccuracy(100, 40, "magician")).toBeCloseTo(100 * 0.8 + 40 * 0.5, 10);
+  });
+
+  it("playerAccuracy uses the Bowman/Thief/Pirate coefficients (dex*0.6 + luk*0.3)", () => {
+    expect(playerAccuracy(100, 40, "bowman")).toBeCloseTo(100 * 0.6 + 40 * 0.3, 10);
+    expect(playerAccuracy(100, 40, "thief")).toBeCloseTo(100 * 0.6 + 40 * 0.3, 10);
+    expect(playerAccuracy(100, 40, "pirate")).toBeCloseTo(100 * 0.6 + 40 * 0.3, 10);
+  });
+
+  it("falls back to the warrior coefficients for an unknown class", () => {
+    expect(playerAccuracy(100, 40, "nonsense")).toBeCloseTo(playerAccuracy(100, 40, "warrior"), 10);
+  });
+
+  it("requiredAccuracy has no level-gap penalty when the mob is at or below player level", () => {
+    expect(requiredAccuracy(50, 20, 25)).toBeCloseTo(1.84 * 50, 10);
+    expect(requiredAccuracy(50, 25, 25)).toBeCloseTo(1.84 * 50, 10);
+  });
+
+  it("requiredAccuracy scales up with a positive level gap", () => {
+    const noGap = requiredAccuracy(50, 25, 25);
+    const gap5 = requiredAccuracy(50, 30, 25);
+    expect(gap5).toBeCloseTo((1.84 + 0.07 * 5) * 50, 10);
+    expect(gap5).toBeGreaterThan(noGap);
+  });
+
+  it("hitChance is 100% against a mob with 0 avoid", () => {
+    expect(hitChance(10, 0, 20, 20)).toBe(1);
+  });
+
+  it("hitChance is 100% once ACC reaches the required threshold and clamps there", () => {
+    const req = requiredAccuracy(25, 21, 21);
+    expect(hitChance(req, 25, 21, 21)).toBeCloseTo(1, 10);
+    expect(hitChance(req * 2, 25, 21, 21)).toBe(1);
+  });
+
+  it("hitChance is proportional to ACC below the required threshold", () => {
+    const req = requiredAccuracy(25, 21, 21);
+    expect(hitChance(req / 2, 25, 21, 21)).toBeCloseTo(0.5, 10);
+  });
+
+  it("a low-level character vs a high-avoid mob well above their level lands well under 100% -- the Jr. Necki case", () => {
+    // Jr. Necki (MONSTER_DB id 18): level 21, avoid 25. A freshly-relevant lvl17
+    // warrior-type build (dex 25, luk 5) does NOT reliably hit it -- this is the
+    // exact real-world case this feature exists to surface.
+    const acc = playerAccuracy(25, 5, "warrior");
+    const chance = hitChance(acc, 25, 21, 17);
+    expect(chance).toBeLessThan(0.6);
   });
 });
