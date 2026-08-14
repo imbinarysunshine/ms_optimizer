@@ -812,6 +812,20 @@ export default function App() {
     setCharMpMax(projected.mpMax);
   };
 
+  // Picking a class chip narrows the skill row to that class -- but if the
+  // currently active skill isn't IN that class, everything driven by
+  // activeSkill.apDistribution (level-up stat projection, damage formula) would
+  // keep running off the old class silently. Auto-select that class's first
+  // verified skill so "select Magician" actually means Magician everywhere,
+  // not just in the skill row's visible options.
+  const selectClass = (cls) => {
+    setClassFilter(cls);
+    if (cls !== null && SKILLS[activeSkillKey]?.class !== cls) {
+      const firstVerified = SKILL_LIST.find(s => s.class === cls && s.verified);
+      if (firstVerified) setActiveSkillKey(firstVerified.key);
+    }
+  };
+
   const filtered = useMemo(() => {
     // Selecting an unverified skill (see classSkills.js) means there's no trustworthy
     // damage formula to compute anything from -- rather than guess, show nothing and
@@ -1014,13 +1028,15 @@ export default function App() {
         {/* Class / Skill selector -- drives AP distribution, damage formula, cast time,
             and hits/targets-per-cast for everything below. See src/lib/classSkills.js:
             only skills with a sourced + spot-checked formula are selectable.
-            classFilter (below) narrows the skill row to one class at a time, purely a
-            display filter -- it never touches activeSkillKey by itself, so filtering
-            to a different class doesn't silently swap which skill is actually active. */}
+            classFilter (below) narrows the skill row to one class at a time, AND
+            (via selectClass) switches activeSkillKey to that class's first verified
+            skill if the current one isn't already in it -- so picking a class
+            actually governs stat-projection/damage everywhere, not just the visible
+            skill chips. */}
         <div style={{ marginBottom:12, padding:"10px 14px", border:"1px solid #30363d", borderRadius:8, background:"#161b22" }}>
           <div style={{ fontSize:10, color:"#6b7280", letterSpacing:1, marginBottom:6 }}>CLASS</div>
           <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
-            <button onClick={() => setClassFilter(null)}
+            <button onClick={() => selectClass(null)}
               style={{
                 background: classFilter === null ? "#7c3aed22" : "#0d1117",
                 border: `1px solid ${classFilter === null ? "#7c3aed" : "#30363d"}`,
@@ -1031,7 +1047,7 @@ export default function App() {
               Show All Skills
             </button>
             {CLASS_LIST.map(cls => (
-              <button key={cls} onClick={() => setClassFilter(cls)}
+              <button key={cls} onClick={() => selectClass(cls)}
                 style={{
                   background: classFilter === cls ? "#7c3aed22" : "#0d1117",
                   border: `1px solid ${classFilter === cls ? "#7c3aed" : "#30363d"}`,
